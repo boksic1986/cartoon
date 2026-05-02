@@ -60,6 +60,36 @@ def test_build_review_packet_includes_comfyui_dry_run_previews_when_present(tmp_
         assert any(path.endswith(f"{item.scene_id}.comfyui_dry_run.json") for path in item.artifact_paths)
 
 
+def test_build_review_packet_deduplicates_seedance_dry_run_artifacts(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    dry_run = runner.invoke(
+        app,
+        [
+            "generate-videos",
+            str(story_dir / "05_video_jobs.json"),
+            "--provider",
+            "seedance",
+            "--dry-run",
+        ],
+    )
+    assert dry_run.exit_code == 0, dry_run.output
+
+    result = runner.invoke(app, ["build-review-packet", str(story_dir)])
+
+    assert result.exit_code == 0, result.output
+    packet = ReviewPacket.model_validate(read_json(story_dir / "review" / "review_packet.json"))
+    video_items = [item for item in packet.items if item.item_type == "video"]
+    assert video_items
+    for item in video_items:
+        assert len(item.artifact_paths) == len(set(item.artifact_paths))
+        assert (story_dir / "seedance_dry_run" / "jobs.json").as_posix() in item.artifact_paths
+        assert any(path.endswith(f"{item.scene_id}.seedance_dry_run.json") for path in item.artifact_paths)
+
+
 def test_quality_check_validates_review_packet_when_present(tmp_path, monkeypatch):
     monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
     runner = CliRunner()

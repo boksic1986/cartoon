@@ -21,12 +21,14 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
    补充回归测试。
 7. 增加 `register-preview-images <preview_dir> --approved`，用于把人工认可的预览图登记为
    当前视频任务首帧输入，并写出 `auto=false` 的图片审核记录。
+8. 基于已登记首帧生成 10 条 Seedance dry-run 请求预览，并刷新人工审核包；审核包会去重
+   dry-run artifact paths，避免同一个 request preview 重复出现。
 
 下一步建议：
 
 1. 准备真实 ComfyUI 工作流和模型 manifest，先完成手动前端冒烟。
 2. 冒烟通过后，再开发真实 ComfyUI provider；测试仍必须使用 mock HTTP 服务。
-3. 基于已登记首帧生成 Seedance dry-run 请求预览，人工确认运动提示词后再考虑真实视频 provider。
+3. 人工确认 Seedance dry-run 的运动提示词和首帧引用后，再考虑真实视频 provider。
 
 ## 延后阶段
 

@@ -101,3 +101,7 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
   `images_raw` 和 `images_approved`，重写 `05_video_jobs.json`，并写出 `auto=false` 的图片审核记录。
 - 当前守株待兔输出目录已用 `register-preview-images outputs\shou-zhu-dai-tu\real_images_preview_comedy_10 --approved`
   登记 10 张预览图，并重新生成 mock 视频记录。
+- 已基于 `images_approved` 生成 10 条 Seedance dry-run 请求预览：
+  `outputs/shou-zhu-dai-tu/seedance_dry_run/jobs.json` 和 `outputs/shou-zhu-dai-tu/videos/*.seedance_dry_run.json`。
+- `review/review_packet.json` 已刷新，视频审核项包含 Seedance jobs 清单和每个镜头 request preview；
+  dry-run artifact paths 已去重，便于人工审核。
