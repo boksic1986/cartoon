@@ -80,6 +80,7 @@ idiom-video build-image-prompts outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider mock
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider comfyui --dry-run --workflow workflows/comfyui/text2image_sdxl.placeholder.json
 idiom-video comfyui-smoke-check outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
+idiom-video real-image-preflight outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
 idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider seedance --dry-run
@@ -105,11 +106,15 @@ idiom-video quality-check outputs/shou-zhu-dai-tu/
 review 记录、模型 manifest 字段。核心 schema 会拒绝缺失字段和未知字段，避免人工编辑 JSON
 时把拼写错误或临时字段带入后续流程。
 如果存在 `comfyui_dry_run/jobs.json`，`quality-check` 也会校验 ComfyUI dry-run 任务结构、
-workflow 路径和每个 request preview 文件是否存在。
+workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表会被视为失败，避免误把
+“没有请求”当成“已经准备好”。
 如果存在 `seedance_dry_run/jobs.json`，`quality-check` 会校验 Seedance dry-run 任务结构、
-首帧图片路径和每个 request preview 文件是否存在。
+首帧图片路径和每个 request preview 文件是否存在；空的 jobs 列表同样会失败。
 如果存在 `review/review_packet.json`，`quality-check` 会校验审核包 schema、每个审核项状态和
 引用的产物文件路径。
+如果存在 `quality_reports/real_image_preflight.json`，`quality-check` 会校验真实图片生成前门禁报告；
+未通过门禁时，完整质量检查也会失败。若该报告曾经通过，`quality-check` 会按报告里的 workflow
+和 manifest 路径重新执行离线 preflight，防止人工审核后又改动 workflow 或模型记录。
 
 ## 审核记录
 
@@ -137,7 +142,10 @@ idiom-video build-review-packet outputs/shou-zhu-dai-tu/
 
 该命令会写出 `review/review_packet.json`，汇总剧本、图片、视频、配音和口型占位任务的
 审核项、产物路径和检查清单。真实图片或真实视频接入后，人工审核者可以直接编辑这个 JSON；
-只要存在 `pending`、`rejected` 或引用文件缺失，`quality-check` 就会失败。
+只要存在 `pending`、`rejected` 或引用文件缺失，`quality-check` 就会失败。若已经生成
+ComfyUI 或 Seedance dry-run，审核包会把对应的 jobs 清单和 request preview 一并列入审核项。
+dry-run 产物生成或变更后，需要重新运行 `build-review-packet`；否则 `quality-check` 和
+`real-image-preflight` 会认为审核包已经过期。
 
 ## 对话、配音与口型
 
@@ -182,6 +190,17 @@ idiom-video comfyui-smoke-check outputs/shou-zhu-dai-tu --workflow workflows/com
 该命令会写出 `quality_reports/comfyui_smoke_check.json`，检查 workflow JSON、模型许可证记录、
 dry-run 请求预览和 workflow 引用是否一致。它不会打开 ComfyUI、不会访问 `127.0.0.1`、
 也不会生成真实图片。详细步骤见 `docs/comfyui_smoke_checklist.md`。
+
+当 ComfyUI dry-run、审核包和模型 manifest 都准备好后，再运行真实图片生成前门禁：
+
+```powershell
+idiom-video real-image-preflight outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
+```
+
+该命令会写出 `quality_reports/comfyui_smoke_check.json` 和
+`quality_reports/real_image_preflight.json`。如果通过，报告中的
+`next_step` 会是 `STOP_BEFORE_REAL_IMAGE_GENERATION`，表示已经到达真实图片生成前的停止线；
+此时应停下来由人工确认是否允许接入或调用真实 ComfyUI 生成。
 
 ## 后续接入 Seedance
 

@@ -19,6 +19,7 @@
 - `src/idiom_video/script_writer.py`：成语资料生成剧本。
 - `src/idiom_video/storyboard_writer.py`：剧本生成分镜。
 - `src/idiom_video/prompt_builder.py`：分镜生成图片提示词和图片任务。
+- `src/idiom_video/real_image_preflight.py`：真实图片生成前门禁报告。
 - `src/idiom_video/voice_builder.py`：分镜 speech cue 生成配音、音频对齐和口型任务。
 - `src/idiom_video/review_packet.py`：生成统一人工审核包。
 - `src/idiom_video/quality_rules.py`：质量检查和审核规则。
@@ -35,6 +36,8 @@
 - `docs/agent_skills.md`：多 Agent 分工、技能使用和目录权限。
 - `docs/comfyui_smoke_checklist.md`：ComfyUI 本地冒烟测试前的离线检查和人工步骤。
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
+- `outputs/{idiom_slug}/quality_reports/real_image_preflight.json`：真实图片生成前门禁报告，默认被 git 忽略。
+- `outputs/{idiom_slug}/quality_reports/comfyui_smoke_check.json`：ComfyUI 离线冒烟检查报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/review_packet.json`：统一人工审核包，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。

@@ -4,10 +4,12 @@ from pathlib import Path
 
 from idiom_video.schemas import (
     AlignmentCue,
+    ComfyUIDryRunJob,
     LipSyncJob,
     ReviewPacket,
     ReviewPacketItem,
     ReviewStatus,
+    SeedanceDryRunJob,
     Script,
     Storyboard,
     VideoClip,
@@ -41,6 +43,61 @@ def _load_list(path: Path, validator):
     return [validator(item) for item in read_json(path)]
 
 
+def _packet_item_by_type_scene(packet: ReviewPacket, item_type: str, scene_id: str) -> ReviewPacketItem | None:
+    for item in packet.items:
+        if item.item_type == item_type and item.scene_id == scene_id:
+            return item
+    return None
+
+
+def find_review_packet_dry_run_gaps(story_dir: Path, packet: ReviewPacket) -> list[tuple[str, str | None]]:
+    gaps: list[tuple[str, str | None]] = []
+    comfyui_dry_run_jobs_path = story_dir / "comfyui_dry_run" / "jobs.json"
+    if comfyui_dry_run_jobs_path.exists():
+        for job in _load_list(comfyui_dry_run_jobs_path, ComfyUIDryRunJob.model_validate):
+            item = _packet_item_by_type_scene(packet, "image", job.scene_id)
+            if item is None:
+                gaps.append(("ComfyUI dry-run scene missing from review packet", job.scene_id))
+                continue
+            if comfyui_dry_run_jobs_path.as_posix() not in item.artifact_paths:
+                gaps.append(
+                    (
+                        "ComfyUI dry-run jobs missing from review packet",
+                        f"review_packet:{item.item_id}",
+                    )
+                )
+            if job.request_preview_path not in item.artifact_paths:
+                gaps.append(
+                    (
+                        "ComfyUI dry-run request preview missing from review packet",
+                        job.request_preview_path,
+                    )
+                )
+
+    seedance_dry_run_jobs_path = story_dir / "seedance_dry_run" / "jobs.json"
+    if seedance_dry_run_jobs_path.exists():
+        for job in _load_list(seedance_dry_run_jobs_path, SeedanceDryRunJob.model_validate):
+            item = _packet_item_by_type_scene(packet, "video", job.scene_id)
+            if item is None:
+                gaps.append(("Seedance dry-run scene missing from review packet", job.scene_id))
+                continue
+            if seedance_dry_run_jobs_path.as_posix() not in item.artifact_paths:
+                gaps.append(
+                    (
+                        "Seedance dry-run jobs missing from review packet",
+                        f"review_packet:{item.item_id}",
+                    )
+                )
+            if job.request_preview_path not in item.artifact_paths:
+                gaps.append(
+                    (
+                        "Seedance dry-run request preview missing from review packet",
+                        job.request_preview_path,
+                    )
+                )
+    return gaps
+
+
 def build_review_packet(story_dir: Path) -> ReviewPacket:
     script = Script.model_validate(read_json(story_dir / "01_script.json"))
     storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
@@ -48,9 +105,15 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
     clips = _load_list(story_dir / "videos" / "clips.json", VideoClip.model_validate)
     alignment = _load_list(story_dir / "07_alignment.json", AlignmentCue.model_validate)
     lipsync_jobs = _load_list(story_dir / "08_lipsync_jobs.json", LipSyncJob.model_validate)
+    comfyui_dry_run_jobs_path = story_dir / "comfyui_dry_run" / "jobs.json"
+    comfyui_dry_run_jobs = _load_list(comfyui_dry_run_jobs_path, ComfyUIDryRunJob.model_validate)
+    seedance_dry_run_jobs_path = story_dir / "seedance_dry_run" / "jobs.json"
+    seedance_dry_run_jobs = _load_list(seedance_dry_run_jobs_path, SeedanceDryRunJob.model_validate)
 
     voice_assets_by_cue = {asset.cue_id: asset for asset in voice_assets}
     clips_by_scene = {clip.scene_id: clip for clip in clips}
+    comfyui_dry_run_by_scene = {job.scene_id: job for job in comfyui_dry_run_jobs}
+    seedance_dry_run_by_scene = {job.scene_id: job for job in seedance_dry_run_jobs}
     alignment_path = story_dir / "07_alignment.json"
 
     items: list[ReviewPacketItem] = []
@@ -72,6 +135,11 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
             (story_dir / "images_approved" / f"{scene.scene_id}.png").as_posix(),
             (story_dir / "03_image_prompts.json").as_posix(),
         ]
+        if comfyui_dry_run_jobs_path.exists():
+            image_paths.append(comfyui_dry_run_jobs_path.as_posix())
+            comfyui_job = comfyui_dry_run_by_scene.get(scene.scene_id)
+            if comfyui_job is not None:
+                image_paths.append(comfyui_job.request_preview_path)
         items.append(
             ReviewPacketItem(
                 item_id=f"image_{scene.scene_id}",
@@ -86,6 +154,11 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
         )
         clip = clips_by_scene.get(scene.scene_id)
         video_paths = [clip.path if clip else (story_dir / "videos" / f"{scene.scene_id}.txt").as_posix()]
+        if seedance_dry_run_jobs_path.exists():
+            video_paths.append(seedance_dry_run_jobs_path.as_posix())
+            seedance_job = seedance_dry_run_by_scene.get(scene.scene_id)
+            if seedance_job is not None:
+                video_paths.append(seedance_job.request_preview_path)
         items.append(
             ReviewPacketItem(
                 item_id=f"video_{scene.scene_id}",

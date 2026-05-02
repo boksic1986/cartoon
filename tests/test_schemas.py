@@ -11,6 +11,8 @@ from idiom_video.schemas import (
     IdiomProfile,
     LipSyncJob,
     ModelManifest,
+    RealImagePreflightIssue,
+    RealImagePreflightReport,
     ReviewPacket,
     ReviewPacketItem,
     SeedanceDryRunJob,
@@ -221,3 +223,27 @@ def test_review_packet_schema_is_strict():
     item_payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         ReviewPacketItem.model_validate(item_payload)
+
+
+def test_real_image_preflight_report_schema_is_strict():
+    report = RealImagePreflightReport(
+        ok=True,
+        story_dir="outputs/story",
+        workflow_path="workflows/comfyui/text2image_reviewed.json",
+        manifest_path="data/models/models_manifest.json",
+        smoke_report_path="outputs/story/quality_reports/comfyui_smoke_check.json",
+        checks={"comfyui_smoke": "passed"},
+        issues=[],
+        next_step="STOP_BEFORE_REAL_IMAGE_GENERATION",
+        stop_reason="Ready to generate real images; stop for user confirmation.",
+    )
+
+    assert report.ok is True
+
+    payload = report.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        RealImagePreflightReport.model_validate(payload)
+
+    with pytest.raises(ValidationError):
+        RealImagePreflightIssue.model_validate({"message": "x", "unexpected": "reject"})

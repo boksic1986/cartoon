@@ -19,7 +19,8 @@ from idiom_video.providers.tts_mock import TTSMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
 from idiom_video.providers.video_seedance import SeedanceVideoProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
-from idiom_video.review_packet import build_review_packet
+from idiom_video.real_image_preflight import build_real_image_preflight_report
+from idiom_video.review_packet import build_review_packet, find_review_packet_dry_run_gaps
 from idiom_video.schemas import (
     AlignmentCue,
     ComfyUIDryRunJob,
@@ -28,6 +29,7 @@ from idiom_video.schemas import (
     ImagePrompt,
     LipSyncJob,
     PublishMetadata,
+    RealImagePreflightReport,
     ReviewItem,
     ReviewPacket,
     ReviewRecord,
@@ -229,6 +231,9 @@ def _run_full_quality_check(story_dir: Path) -> dict:
             "comfyui_dry_run/jobs.json",
             lambda data: [ComfyUIDryRunJob.model_validate(item) for item in data],
         )
+        if dry_run_jobs == []:
+            checks["comfyui_dry_run_schema"] = "failed"
+            issues.append(_quality_issue("ComfyUI dry-run jobs must not be empty", "comfyui_dry_run/jobs.json"))
     else:
         dry_run_jobs = None
         checks["comfyui_dry_run_schema"] = "skipped"
@@ -242,6 +247,9 @@ def _run_full_quality_check(story_dir: Path) -> dict:
             "seedance_dry_run/jobs.json",
             lambda data: [SeedanceDryRunJob.model_validate(item) for item in data],
         )
+        if seedance_dry_run_jobs == []:
+            checks["seedance_dry_run_schema"] = "failed"
+            issues.append(_quality_issue("Seedance dry-run jobs must not be empty", "seedance_dry_run/jobs.json"))
     else:
         seedance_dry_run_jobs = None
         checks["seedance_dry_run_schema"] = "skipped"
@@ -361,10 +369,58 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                     if not Path(artifact_path).exists():
                         review_packet_missing = True
                         issues.append(_quality_issue("review packet artifact missing", artifact_path))
+            for message, path in find_review_packet_dry_run_gaps(story_dir, review_packet):
+                review_packet_missing = True
+                issues.append(_quality_issue(message, path))
         checks["review_packet_files"] = "failed" if review_packet_missing else "passed"
     else:
         checks["review_packet_schema"] = "skipped"
         checks["review_packet_files"] = "skipped"
+
+    preflight_report_path = story_dir / "quality_reports" / "real_image_preflight.json"
+    if preflight_report_path.exists():
+        preflight_report = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "real_image_preflight_schema",
+            "quality_reports/real_image_preflight.json",
+            RealImagePreflightReport.model_validate,
+        )
+        if preflight_report is not None:
+            checks["real_image_preflight"] = "passed" if preflight_report.ok else "failed"
+            for issue in preflight_report.issues:
+                issues.append(QualityIssue(message=issue.message, path=issue.path))
+            if Path(preflight_report.smoke_report_path).exists():
+                checks["real_image_preflight_smoke_report"] = "passed"
+            else:
+                checks["real_image_preflight_smoke_report"] = "failed"
+                issues.append(
+                    _quality_issue("preflight smoke report missing", preflight_report.smoke_report_path)
+                )
+            if preflight_report.ok:
+                current_preflight = build_real_image_preflight_report(
+                    story_dir,
+                    Path(preflight_report.workflow_path),
+                    Path(preflight_report.manifest_path),
+                )
+                checks["real_image_preflight_consistency"] = "passed" if current_preflight.ok else "failed"
+                if not current_preflight.ok:
+                    issues.append(
+                        _quality_issue(
+                            "current real image preflight no longer passes; rerun real-image-preflight",
+                            "quality_reports/real_image_preflight.json",
+                        )
+                    )
+                    for issue in current_preflight.issues:
+                        issues.append(QualityIssue(message=issue.message, path=issue.path))
+            else:
+                checks["real_image_preflight_consistency"] = "skipped"
+    else:
+        checks["real_image_preflight_schema"] = "skipped"
+        checks["real_image_preflight"] = "skipped"
+        checks["real_image_preflight_smoke_report"] = "skipped"
+        checks["real_image_preflight_consistency"] = "skipped"
 
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
@@ -660,6 +716,25 @@ def build_review_packet_command(story_dir: Path) -> None:
     packet = build_review_packet(story_dir)
     output = write_json(story_dir / "review" / "review_packet.json", packet)
     info(f"wrote {output}")
+
+
+@app.command(name="real-image-preflight")
+def real_image_preflight(
+    story_dir: Path,
+    workflow: Path | None = typer.Option(None, "--workflow"),
+    manifest: Path | None = typer.Option(None, "--manifest"),
+) -> None:
+    workflow_path = workflow or _default_comfyui_workflow_path()
+    manifest_path = manifest or _default_models_manifest_path()
+    smoke_report = build_comfyui_smoke_report(story_dir, workflow_path, manifest_path)
+    write_json(story_dir / "quality_reports" / "comfyui_smoke_check.json", smoke_report)
+    report = build_real_image_preflight_report(story_dir, workflow_path, manifest_path, smoke_report=smoke_report)
+    output = write_json(story_dir / "quality_reports" / "real_image_preflight.json", report)
+    if not report.ok:
+        warn(f"real image preflight failed; see {output}")
+        raise typer.Exit(1)
+    info(f"real image preflight passed: {output}")
+    warn(report.stop_reason)
 
 
 @app.command(name="comfyui-smoke-check")
