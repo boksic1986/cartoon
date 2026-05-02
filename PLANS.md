@@ -41,3 +41,19 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 4. `approve-images --auto` 写入图片审核记录。
 5. `quality-check` 会解析 review item 状态，遇到 `pending` 或 `rejected` 会失败。
 6. `approve-images --auto` 不会批准缺失图片，缺图 scene 会记录为 `pending`。
+
+## Phase 1.3 产物 schema 质量门
+
+已完成：
+
+1. `quality-check` 会逐一校验核心 JSON 产物：`01_script.json`、`02_storyboard.json`、
+   `03_image_prompts.json`、`04_image_jobs.json`、`05_video_jobs.json`、`final/metadata.json`。
+2. 任一核心产物缺字段、包含未知字段或结构不符合 Pydantic schema 时，`quality-check` 会失败，并在
+   `quality_reports/full_quality.json` 写出对应 check 和问题路径。
+3. 为损坏剧本、分镜、图片提示词、图片任务、视频任务、发布元数据和未知字段场景补充回归测试。
+
+下一步建议：
+
+1. 为 `quality-check` 增加可选的批量目录扫描，便于后续批量成语生产。
+2. 为真实图片和真实视频接入前的人工审核 UI 设计 JSON 编辑约束。
+3. 在接入 TTS 前补充音频和口型 provider 的 schema 草案。

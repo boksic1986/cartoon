@@ -86,8 +86,11 @@ idiom-video quality-check outputs/shou-zhu-dai-tu/
 可以包含被排除的概念，因为它表达的是“不要生成这些内容”。
 
 `quality-check` 会检查完整产物链路，并写出
-`quality_reports/full_quality.json`。当前检查包括必需产物、prompt 质量报告、分镜时长、
-已审核图片是否存在、review 记录、模型 manifest 字段。
+`quality_reports/full_quality.json`。当前检查包括必需产物、核心 JSON schema
+（`01_script.json`、`02_storyboard.json`、`03_image_prompts.json`、`04_image_jobs.json`、
+`05_video_jobs.json`、`final/metadata.json`）、prompt 质量报告、分镜时长、已审核图片是否存在、
+review 记录、模型 manifest 字段。核心 schema 会拒绝缺失字段和未知字段，避免人工编辑 JSON
+时把拼写错误或临时字段带入后续流程。
 
 ## 审核记录
 
