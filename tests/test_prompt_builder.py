@@ -1,7 +1,9 @@
 from pathlib import Path
 
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
-from idiom_video.schemas import Storyboard
+from idiom_video.schemas import IdiomProfile, Storyboard
+from idiom_video.script_writer import build_script
+from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json
 
 
@@ -28,3 +30,15 @@ def test_build_image_jobs_uses_provider_neutral_filename(tmp_path):
 
     assert jobs[0].job_id == "image_scene_01"
     assert jobs[0].output_path.endswith("images_raw/scene_01.png")
+
+
+def test_build_image_prompts_includes_all_ten_comedy_frames():
+    storyboard = build_storyboard(
+        build_script(IdiomProfile.model_validate(read_json(FIXTURES / "idiom_sample.json")))
+    )
+
+    prompts = build_image_prompts(storyboard, "中国风儿童绘本卡通", "不要文字")
+
+    assert len(prompts) == 10
+    assert any("落叶虚惊" in prompt.prompt and "落叶" in prompt.prompt for prompt in prompts)
+    assert prompts[-1].scene_id == "scene_10"

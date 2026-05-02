@@ -82,6 +82,7 @@ idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --prov
 idiom-video comfyui-smoke-check outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
 idiom-video real-image-preflight outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
 idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
+idiom-video register-preview-images outputs/shou-zhu-dai-tu/real_images_preview_comedy_10 --approved
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider seedance --dry-run
 idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
@@ -133,6 +134,11 @@ review/video_review.json
 `quality-check` 会解析 review JSON。只要任一审核项是 `pending` 或 `rejected`，
 完整质量检查就会失败，避免“有审核文件”被误认为“已经审核通过”。`approve-images --auto`
 只会批准真实存在的 raw 图片；缺失图片会记录为 `pending`，不会生成对应视频任务。
+
+如果已经通过人工视觉审核的是内置图像生成预览目录，可以用
+`register-preview-images <preview_dir> --approved` 把这些 PNG 登记到 `images_raw` 和
+`images_approved`，重写 `05_video_jobs.json`，并把 `review/image_review.json` 标为
+`auto=false`。这一步不调用外部服务，只把人工认可的预览帧作为当前视频任务首帧输入。
 
 可以用 `build-review-packet` 生成一个轻量 JSON 审核表单：
 

@@ -619,6 +619,63 @@ def approve_images(images_raw_dir: Path, auto: bool = typer.Option(False, "--aut
     info(f"approved images and wrote {len(jobs)} video jobs")
 
 
+@app.command(name="register-preview-images")
+def register_preview_images(
+    preview_dir: Path,
+    approved: bool = typer.Option(False, "--approved"),
+) -> None:
+    if not approved:
+        raise typer.BadParameter("preview images must be explicitly accepted with --approved")
+    story_dir = preview_dir.parent
+    raw_dir = story_dir / "images_raw"
+    approved_dir = story_dir / "images_approved"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    approved_dir.mkdir(parents=True, exist_ok=True)
+    storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
+    jobs: list[VideoGenerationJob] = []
+    review_items: list[ReviewItem] = []
+    for scene in storyboard.scenes:
+        preview_path = preview_dir / f"{scene.scene_id}.png"
+        raw_path = raw_dir / f"{scene.scene_id}.png"
+        approved_path = approved_dir / f"{scene.scene_id}.png"
+        if not preview_path.exists():
+            review_items.append(
+                ReviewItem(
+                    item_id=f"image_{scene.scene_id}",
+                    scene_id=scene.scene_id,
+                    asset_path=None,
+                    status="pending",
+                    notes=f"未找到人工认可的预览图：{preview_path.as_posix()}。",
+                )
+            )
+            continue
+        shutil.copy2(preview_path, raw_path)
+        shutil.copy2(preview_path, approved_path)
+        jobs.append(
+            VideoGenerationJob(
+                job_id=f"video_{scene.scene_id}",
+                scene_id=scene.scene_id,
+                image_path=approved_path.as_posix(),
+                prompt=scene.video_prompt_hint,
+                duration_seconds=scene.duration_seconds,
+                output_path=(story_dir / "videos" / f"{scene.scene_id}.txt").as_posix(),
+            )
+        )
+        review_items.append(
+            ReviewItem(
+                item_id=f"image_{scene.scene_id}",
+                scene_id=scene.scene_id,
+                asset_path=approved_path.as_posix(),
+                status="approved",
+                notes="人工认可的预览图已登记为当前视频任务首帧；正式发布前仍需复核版权、风格和连续性。",
+            )
+        )
+    write_json(story_dir / "images_raw" / "assets.json", [])
+    write_json(story_dir / "05_video_jobs.json", jobs)
+    _write_review_record(story_dir, "image", review_items, auto=False)
+    info(f"registered {len(jobs)} approved preview images")
+
+
 @app.command()
 def generate_videos(
     video_jobs_path: Path,
