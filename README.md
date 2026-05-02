@@ -56,6 +56,7 @@ Expected files include:
 03_image_prompts.json
 04_image_jobs.json
 05_video_jobs.json
+quality_reports/prompt_quality.json
 subtitles/final.srt
 final/metadata.json
 final/final_mock.mp4 or final/final_mock.txt
@@ -75,6 +76,11 @@ idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
 ```
+
+`build-image-prompts` writes `quality_reports/prompt_quality.json`. The first
+milestone checks positive image prompts for forbidden terms and stops before
+image generation if a prompt needs human review. Negative prompts can contain
+blocked concepts because they are explicit exclusions.
 
 ## Dialogue, Voice, And Lip Sync
 
@@ -107,6 +113,17 @@ API keys.
 - `CURRENT_STATUS.md`: current environment and latest verification status.
 - `REPO_MAP.md`: directory map for humans and agents.
 - `docs/agent_skills.md`: multi-agent ownership, skills, and permissions.
+
+## Repository
+
+The local repository tracks `main` against:
+
+```txt
+git@github.com:boksic1986/cartoon.git
+```
+
+Generated files under `outputs/` are intentionally ignored and can be recreated
+with the mock pipeline.
 
 ## Available Plugins
 

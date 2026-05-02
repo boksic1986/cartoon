@@ -31,6 +31,7 @@
 - `data/models/`: model license manifest.
 - `workflows/comfyui/`: placeholder workflow references for later real ComfyUI work.
 - `docs/agent_skills.md`: multi-agent split, skill usage, and file permissions.
+- `outputs/{idiom_slug}/quality_reports/`: generated quality reports; ignored by git.
 
 ## Tests
 

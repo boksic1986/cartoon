@@ -13,6 +13,7 @@ from idiom_video.media.subtitle import storyboard_to_srt
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
 from idiom_video.providers.image_mock import ImageMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
+from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms
 from idiom_video.schemas import (
     IdiomProfile,
     ImageGenerationJob,
@@ -45,6 +46,27 @@ def _load_style_text() -> tuple[str, str]:
     return style, negative
 
 
+def _load_forbidden_terms() -> list[str]:
+    root = project_root(Path(__file__).resolve())
+    terms_path = root / "data" / "style" / "forbidden_terms.json"
+    if not terms_path.exists():
+        return ["明星脸", "公众人物", "具体版权角色", "在世艺术家风格", "品牌 logo"]
+    data = read_json(terms_path)
+    return list(data.get("terms", []))
+
+
+def _write_prompt_quality_report(story_dir: Path, prompts: list[ImagePrompt]) -> QualityResult:
+    forbidden_terms = _load_forbidden_terms()
+    issues: list[QualityIssue] = []
+    for prompt in prompts:
+        result = check_forbidden_terms(prompt.prompt, forbidden_terms)
+        for issue in result.issues:
+            issues.append(issue.model_copy(update={"path": f"prompt:{prompt.prompt_id}"}))
+    quality = QualityResult(ok=not issues, issues=issues)
+    write_json(story_dir / "quality_reports" / "prompt_quality.json", quality)
+    return quality
+
+
 def _write_script(idiom_path: Path) -> Path:
     profile = IdiomProfile.model_validate(read_json(idiom_path))
     story_dir = _story_dir_for_profile(profile)
@@ -69,6 +91,10 @@ def _write_image_prompts(storyboard_path: Path) -> tuple[Path, Path]:
         width=settings.default_image_width,
         height=settings.default_image_height,
     )
+    quality = _write_prompt_quality_report(storyboard_path.parent, prompts)
+    if not quality.ok:
+        warn("prompt quality check failed; see quality_reports/prompt_quality.json")
+        raise typer.Exit(1)
     jobs = build_image_jobs(prompts, storyboard_path.parent)
     prompts_path = write_json(storyboard_path.parent / "03_image_prompts.json", prompts)
     jobs_path = write_json(storyboard_path.parent / "04_image_jobs.json", jobs)

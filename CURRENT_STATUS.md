@@ -1,6 +1,12 @@
 # Current Status
 
-Status: MVP mock flow implemented and verified locally.
+Status: Phase 1.1 hardening in progress.
+
+## Git
+
+- Branch: `main`
+- Remote: `git@github.com:boksic1986/cartoon.git`
+- Latest pushed baseline: `f524fe9 chore: initialize mock idiom video pipeline`
 
 ## Environment
 
@@ -29,5 +35,12 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\
 
 Latest verification:
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`: 15 passed.
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`: 17 passed.
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`: generated the expected `outputs/shou-zhu-dai-tu/` artifacts.
+- `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`: `ok=true`, no issues.
+
+Current hardening changes:
+
+- `build-image-prompts` now writes `quality_reports/prompt_quality.json`.
+- Positive image prompts are blocked if they contain forbidden terms.
+- The single-step CLI flow is covered by integration tests.

@@ -59,7 +59,7 @@ def build_script(profile: IdiomProfile) -> Script:
             order=2,
             title="兔子撞树",
             summary="一只兔子意外撞到树桩，阿木捡到了兔子。",
-            visual_goal="表现偶然事件，不夸张不血腥。",
+            visual_goal="温和表现偶然事件，不夸张，适合儿童观看。",
             duration_seconds=6.0,
             speech_cues=[
                 _cue(

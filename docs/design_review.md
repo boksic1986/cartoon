@@ -61,6 +61,8 @@ storytelling with short character dialogue.
   without external services.
 - `04_image_jobs.json` is provider-neutral, and `05_video_jobs.json` is created
   after image approval.
+- `build-image-prompts` writes a prompt quality report and blocks positive
+  prompts that contain forbidden terms.
 
 ## Unfinished Work
 
