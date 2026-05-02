@@ -40,6 +40,7 @@
 - 元数据不包含 API key 或本地敏感信息。
 - 真实发布前，模型和素材许可证已经记录并审核。
 - 最终产物存放在 `outputs/{idiom_slug}/` 下。
+- 如生成了 `review/review_packet.json`，每个审核项都应是 `approved`，且引用文件存在。
 - `quality_reports/full_quality.json` 为 `ok=true`。
 - `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务、
   配音任务、音频对齐、口型任务和发布元数据；缺失字段和未知字段都会阻断。
@@ -49,4 +50,5 @@
 - 如存在 Seedance dry-run 产物，`quality-check` 已确认首帧图片路径和 request preview 文件存在。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
+- `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

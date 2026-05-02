@@ -20,6 +20,7 @@
 - `src/idiom_video/storyboard_writer.py`：剧本生成分镜。
 - `src/idiom_video/prompt_builder.py`：分镜生成图片提示词和图片任务。
 - `src/idiom_video/voice_builder.py`：分镜 speech cue 生成配音、音频对齐和口型任务。
+- `src/idiom_video/review_packet.py`：生成统一人工审核包。
 - `src/idiom_video/quality_rules.py`：质量检查和审核规则。
 - `src/idiom_video/providers/`：mock 和 dry-run provider。
 - `src/idiom_video/media/`：字幕、合成、封面和元数据。
@@ -35,6 +36,7 @@
 - `docs/comfyui_smoke_checklist.md`：ComfyUI 本地冒烟测试前的离线检查和人工步骤。
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
+- `outputs/{idiom_slug}/review/review_packet.json`：统一人工审核包，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。

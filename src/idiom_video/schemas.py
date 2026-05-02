@@ -355,6 +355,7 @@ class PublishMetadata(StrictSchemaModel):
 
 ReviewType = Literal["script", "image", "video"]
 ReviewStatus = Literal["approved", "rejected", "pending"]
+ReviewPacketItemType = Literal["script", "image", "video", "voice", "lipsync", "metadata"]
 
 
 class ReviewItem(StrictSchemaModel):
@@ -371,3 +372,37 @@ class ReviewRecord(StrictSchemaModel):
     auto: bool = False
     items: list[ReviewItem]
     summary: dict[str, int]
+
+
+class ReviewPacketItem(StrictSchemaModel):
+    item_id: str
+    item_type: ReviewPacketItemType
+    title: str
+    artifact_paths: list[str]
+    checklist: list[str]
+    status: ReviewStatus = "pending"
+    scene_id: str | None = None
+    cue_id: str | None = None
+    notes: str = ""
+
+    @field_validator("artifact_paths", "checklist")
+    @classmethod
+    def require_non_empty_list(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("must contain at least one item")
+        return value
+
+
+class ReviewPacket(StrictSchemaModel):
+    idiom_slug: str
+    title: str
+    story_dir: str
+    items: list[ReviewPacketItem]
+    summary: dict[str, int]
+
+    @field_validator("items")
+    @classmethod
+    def require_items(cls, value: list[ReviewPacketItem]) -> list[ReviewPacketItem]:
+        if not value:
+            raise ValueError("review packet must contain items")
+        return value

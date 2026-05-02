@@ -125,3 +125,18 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 1. 为真实 Seedance provider 设计 task id、状态、轮询间隔、失败原因和重试记录字段。
 2. 真实视频接入前，补充视频任务的人工审核表单或 JSON 编辑约束。
 3. 等真实图片风格稳定后，再用审核通过的首帧图片做 Seedance 手动冒烟测试。
+
+## Phase 1.8 人工审核包
+
+已完成：
+
+1. 新增 `ReviewPacket` 和 `ReviewPacketItem` schema，用于约束可人工编辑的审核表单。
+2. 新增 `build-review-packet` CLI，会从现有产物生成 `review/review_packet.json`。
+3. 审核包会汇总剧本、图片、视频、配音和口型占位任务，并附带产物路径、状态和检查清单。
+4. `quality-check` 会在审核包存在时校验 schema、审核状态和引用文件路径。
+
+下一步建议：
+
+1. 为审核包增加批量目录扫描，便于一次检查多个成语输出目录。
+2. 后续可用 Browser Use 做一个只读预览页或轻量本地表单，但仍以 JSON 作为权威产物。
+3. 真实图片/视频接入后，将人工审核结果写回 `review/review_packet.json` 和对应 review JSON。

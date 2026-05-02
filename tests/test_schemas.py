@@ -11,6 +11,8 @@ from idiom_video.schemas import (
     IdiomProfile,
     LipSyncJob,
     ModelManifest,
+    ReviewPacket,
+    ReviewPacketItem,
     SeedanceDryRunJob,
     Storyboard,
     StoryboardScene,
@@ -187,3 +189,35 @@ def test_seedance_dry_run_job_schema_is_strict():
     payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         SeedanceDryRunJob.model_validate(payload)
+
+
+def test_review_packet_schema_is_strict():
+    item = ReviewPacketItem(
+        item_id="image_scene_01",
+        item_type="image",
+        scene_id="scene_01",
+        title="镜头 scene_01 图片审核",
+        artifact_paths=["outputs/story/images_approved/scene_01.png"],
+        checklist=["角色一致", "无品牌标识"],
+        status="approved",
+        notes="mock 自动通过。",
+    )
+    packet = ReviewPacket(
+        idiom_slug="shou-zhu-dai-tu",
+        title="守株待兔",
+        story_dir="outputs/story",
+        items=[item],
+        summary={"approved": 1, "pending": 0, "rejected": 0},
+    )
+
+    assert packet.items[0].item_type == "image"
+
+    payload = packet.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        ReviewPacket.model_validate(payload)
+
+    item_payload = item.model_dump(mode="json")
+    item_payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        ReviewPacketItem.model_validate(item_payload)

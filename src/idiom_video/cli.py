@@ -19,6 +19,7 @@ from idiom_video.providers.tts_mock import TTSMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
 from idiom_video.providers.video_seedance import SeedanceVideoProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
+from idiom_video.review_packet import build_review_packet
 from idiom_video.schemas import (
     AlignmentCue,
     ComfyUIDryRunJob,
@@ -28,6 +29,7 @@ from idiom_video.schemas import (
     LipSyncJob,
     PublishMetadata,
     ReviewItem,
+    ReviewPacket,
     ReviewRecord,
     Script,
     SeedanceDryRunJob,
@@ -339,6 +341,31 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                 issues.append(_quality_issue("Seedance dry-run request preview missing", job.request_preview_path))
         checks["seedance_dry_run_files"] = "failed" if seedance_dry_run_missing else "passed"
 
+    review_packet_path = story_dir / "review" / "review_packet.json"
+    if review_packet_path.exists():
+        review_packet = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "review_packet_schema",
+            "review/review_packet.json",
+            ReviewPacket.model_validate,
+        )
+        review_packet_missing = False
+        if review_packet is not None:
+            for item in review_packet.items:
+                if item.status != "approved":
+                    review_packet_missing = True
+                    issues.append(_quality_issue(f"review packet item is {item.status}", f"review_packet:{item.item_id}"))
+                for artifact_path in item.artifact_paths:
+                    if not Path(artifact_path).exists():
+                        review_packet_missing = True
+                        issues.append(_quality_issue("review packet artifact missing", artifact_path))
+        checks["review_packet_files"] = "failed" if review_packet_missing else "passed"
+    else:
+        checks["review_packet_schema"] = "skipped"
+        checks["review_packet_files"] = "skipped"
+
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
     for name in review_files:
@@ -626,6 +653,13 @@ def quality_check(story_dir: Path) -> None:
         warn("quality check failed; see quality_reports/full_quality.json")
         raise typer.Exit(1)
     info(f"quality check passed: {story_dir / 'quality_reports' / 'full_quality.json'}")
+
+
+@app.command(name="build-review-packet")
+def build_review_packet_command(story_dir: Path) -> None:
+    packet = build_review_packet(story_dir)
+    output = write_json(story_dir / "review" / "review_packet.json", packet)
+    info(f"wrote {output}")
 
 
 @app.command(name="comfyui-smoke-check")
