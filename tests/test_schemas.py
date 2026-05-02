@@ -6,8 +6,11 @@ from pydantic import ValidationError
 from idiom_video.schemas import (
     AlignmentCue,
     ComfyUIDryRunJob,
+    ComfyUISmokeCheckIssue,
+    ComfyUISmokeCheckReport,
     IdiomProfile,
     LipSyncJob,
+    ModelManifest,
     Storyboard,
     StoryboardScene,
     VoiceJob,
@@ -125,3 +128,40 @@ def test_comfyui_dry_run_job_schema_is_strict():
     payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         ComfyUIDryRunJob.model_validate(payload)
+
+
+def test_model_manifest_and_comfyui_smoke_report_schemas_are_strict():
+    manifest = ModelManifest.model_validate(
+        {
+            "models": [
+                {
+                    "name": "idiom_story_sdxl_checkpoint",
+                    "type": "checkpoint",
+                    "local_path": "D:/ComfyUI/models/checkpoints/idiom_story_sdxl.safetensors",
+                    "source": "manual_reviewed",
+                    "license": "LICENSE_REVIEWED",
+                    "commercial_use_allowed": True,
+                    "notes": "人工审核记录。",
+                }
+            ]
+        }
+    )
+    report = ComfyUISmokeCheckReport(
+        ok=True,
+        workflow_path="workflows/comfyui/text2image_reviewed.json",
+        manifest_path="data/models/models_manifest.json",
+        dry_run_jobs_path="outputs/story/comfyui_dry_run/jobs.json",
+        checks={"workflow_json": "passed"},
+        issues=[],
+    )
+
+    assert manifest.models[0].commercial_use_allowed is True
+    assert report.issues == []
+
+    payload = report.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        ComfyUISmokeCheckReport.model_validate(payload)
+
+    with pytest.raises(ValidationError):
+        ComfyUISmokeCheckIssue.model_validate({"message": "x", "unexpected": "reject"})

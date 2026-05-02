@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 import typer
 
+from idiom_video.comfyui_smoke import build_comfyui_smoke_report
 from idiom_video.config import get_settings
 from idiom_video.media.cover_generator import generate_cover
 from idiom_video.media.ffmpeg_compose import compose_mock_final
@@ -69,6 +70,10 @@ def _load_forbidden_terms() -> list[str]:
 
 def _default_comfyui_workflow_path() -> Path:
     return project_root(Path(__file__).resolve()) / "workflows" / "comfyui" / "text2image_sdxl.placeholder.json"
+
+
+def _default_models_manifest_path() -> Path:
+    return project_root(Path(__file__).resolve()) / "data" / "models" / "models_manifest.json"
 
 
 def _write_prompt_quality_report(story_dir: Path, prompts: list[ImagePrompt]) -> QualityResult:
@@ -571,6 +576,28 @@ def quality_check(story_dir: Path) -> None:
         warn("quality check failed; see quality_reports/full_quality.json")
         raise typer.Exit(1)
     info(f"quality check passed: {story_dir / 'quality_reports' / 'full_quality.json'}")
+
+
+@app.command(name="comfyui-smoke-check")
+def comfyui_smoke_check(
+    story_dir: Path,
+    workflow: Path | None = typer.Option(None, "--workflow"),
+    manifest: Path | None = typer.Option(None, "--manifest"),
+    allow_placeholders: bool = typer.Option(False, "--allow-placeholders"),
+) -> None:
+    workflow_path = workflow or _default_comfyui_workflow_path()
+    manifest_path = manifest or _default_models_manifest_path()
+    report = build_comfyui_smoke_report(
+        story_dir=story_dir,
+        workflow_path=workflow_path,
+        manifest_path=manifest_path,
+        allow_placeholders=allow_placeholders,
+    )
+    output = write_json(story_dir / "quality_reports" / "comfyui_smoke_check.json", report)
+    if not report.ok:
+        warn(f"ComfyUI smoke check failed; see {output}")
+        raise typer.Exit(1)
+    info(f"ComfyUI smoke check passed: {output}")
 
 
 @app.command()

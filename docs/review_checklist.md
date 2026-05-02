@@ -16,6 +16,8 @@
 - 图片适合作为 image-to-video 首帧。
 - ComfyUI dry-run 只表示请求预览已生成，不代表真实图片已生成或已审核。
 - 使用 ComfyUI dry-run 时，`comfyui_dry_run/jobs.json` 和每个 request preview JSON 都应可人工审查。
+- 真实 ComfyUI provider 开发前，`quality_reports/comfyui_smoke_check.json` 应为 `ok=true`。
+- workflow 和模型 manifest 不应继续包含 `placeholder` 或 `REVIEW_REQUIRED`。
 
 ## 视频审核
 
@@ -40,6 +42,8 @@
 - `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务、
   配音任务、音频对齐、口型任务和发布元数据；缺失字段和未知字段都会阻断。
 - 如存在 ComfyUI dry-run 产物，`quality-check` 已确认 workflow 路径和 request preview 文件存在。
+- 如果准备进入真实 ComfyUI 冒烟阶段，`comfyui-smoke-check` 已确认 dry-run workflow 与本次检查的
+  workflow 一致。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

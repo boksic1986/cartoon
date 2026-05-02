@@ -78,6 +78,7 @@ idiom-video generate-storyboard outputs/shou-zhu-dai-tu/01_script.json
 idiom-video build-image-prompts outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider mock
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider comfyui --dry-run --workflow workflows/comfyui/text2image_sdxl.placeholder.json
+idiom-video comfyui-smoke-check outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
 idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
@@ -155,6 +156,16 @@ outputs/shou-zhu-dai-tu/images_raw/*.comfyui_dry_run.json
 `workflows/comfyui/` 里的 placeholder workflow 替换为已审核的本地 workflow。模型名称、来源和许可证
 必须记录在 `data/models/models_manifest.json`。
 
+替换真实 workflow 和 manifest 后，可以先运行离线冒烟检查：
+
+```powershell
+idiom-video comfyui-smoke-check outputs/shou-zhu-dai-tu --workflow workflows/comfyui/text2image_sdxl.reviewed.json --manifest data/models/models_manifest.json
+```
+
+该命令会写出 `quality_reports/comfyui_smoke_check.json`，检查 workflow JSON、模型许可证记录、
+dry-run 请求预览和 workflow 引用是否一致。它不会打开 ComfyUI、不会访问 `127.0.0.1`、
+也不会生成真实图片。详细步骤见 `docs/comfyui_smoke_checklist.md`。
+
 ## 后续接入 Seedance
 
 第一阶段的 Seedance provider 也只保留 dry-run。后续真实接入时，应把审核通过的首帧图
@@ -167,6 +178,7 @@ API key。
 - `CURRENT_STATUS.md`：当前状态、环境和验证结果。
 - `REPO_MAP.md`：仓库目录地图。
 - `docs/agent_skills.md`：多 Agent 分工、技能使用和目录权限。
+- `docs/comfyui_smoke_checklist.md`：ComfyUI 本地冒烟测试清单。
 
 ## Git 仓库
 
