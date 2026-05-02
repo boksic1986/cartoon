@@ -89,3 +89,22 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 1. 在本地 ComfyUI 手动跑通 placeholder 替换后的真实 workflow。
 2. 在 `data/models/models_manifest.json` 记录真实图片模型、插件和许可证。
 3. 冒烟测试稳定后，再实现真实 ComfyUI prompt 提交和结果轮询。
+
+## Phase 1.6 ComfyUI 本地冒烟测试准备层
+
+已完成：
+
+1. 新增 `comfyui-smoke-check` CLI，用于在不连接 ComfyUI 的前提下检查本地冒烟测试准备状态。
+2. 新增 `ModelManifest`、`ModelManifestEntry` 和 `ComfyUISmokeCheckReport` schema。
+3. 冒烟检查会确认 workflow JSON、模型 manifest、dry-run 任务、request preview 文件和 workflow
+   引用一致性。
+4. 默认阻断仍包含 `placeholder` 或 `REVIEW_REQUIRED` 的 workflow / manifest，避免误把占位配置当作
+   可真实生成配置。
+5. 新增 `docs/comfyui_smoke_checklist.md`，说明真实 provider 开发前的人工作业步骤。
+
+下一步建议：
+
+1. 在本地安装并启动 ComfyUI，手动导入真实 workflow，完成一次图片生成冒烟。
+2. 用真实 workflow 路径重新运行 `generate-images --provider comfyui --dry-run`，再运行
+   `comfyui-smoke-check`。
+3. 冒烟稳定后，再开发真实 ComfyUI provider：prompt 提交、任务轮询、图片下载和失败重试。

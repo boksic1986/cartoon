@@ -186,6 +186,48 @@ class ComfyUIDryRunJob(StrictSchemaModel):
     dry_run: bool = True
 
 
+class ModelManifestEntry(StrictSchemaModel):
+    name: str
+    type: str
+    local_path: str
+    source: str
+    license: str
+    commercial_use_allowed: bool | None
+    notes: str = ""
+
+    @field_validator("name", "type", "local_path", "source", "license")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
+
+
+class ModelManifest(StrictSchemaModel):
+    models: list[ModelManifestEntry]
+
+    @field_validator("models")
+    @classmethod
+    def require_models(cls, value: list[ModelManifestEntry]) -> list[ModelManifestEntry]:
+        if not value:
+            raise ValueError("models manifest must contain at least one model")
+        return value
+
+
+class ComfyUISmokeCheckIssue(StrictSchemaModel):
+    message: str
+    path: str | None = None
+
+
+class ComfyUISmokeCheckReport(StrictSchemaModel):
+    ok: bool
+    workflow_path: str
+    manifest_path: str
+    dry_run_jobs_path: str
+    checks: dict[str, str]
+    issues: list[ComfyUISmokeCheckIssue] = Field(default_factory=list)
+
+
 class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str

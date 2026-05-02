@@ -32,6 +32,7 @@
 - `data/models/`：模型许可证 manifest。
 - `workflows/comfyui/`：后续真实 ComfyUI 工作流占位说明。
 - `docs/agent_skills.md`：多 Agent 分工、技能使用和目录权限。
+- `docs/comfyui_smoke_checklist.md`：ComfyUI 本地冒烟测试前的离线检查和人工步骤。
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。

@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 1.5 ComfyUI 图片接入准备层开发中。
+状态：Phase 1.6 ComfyUI 本地冒烟测试准备层开发中。
 
 ## Git
 
-- 分支：`codex/phase-1.5-comfyui-dry-run`
+- 分支：`codex/phase-1.6-comfyui-smoke-prep`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`913382b Merge pull request #3 from boksic1986/codex/phase-1.4-voice-lipsync`
+- 已合并功能提交：`035e2d9 Merge pull request #4 from boksic1986/codex/phase-1.5-comfyui-dry-run`
 
 ## 环境
 
@@ -34,13 +34,14 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：50 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：53 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
 - `outputs/shou-zhu-dai-tu/quality_reports/full_quality.json`：`ok=true`，无问题。
 - `outputs/shou-zhu-dai-tu/audio/voice_assets.json`：生成 7 条 mock 配音资产记录。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe generate-images outputs\shou-zhu-dai-tu\03_image_prompts.json --provider comfyui --dry-run --workflow workflows\comfyui\text2image_sdxl.placeholder.json`：生成 6 条 ComfyUI 请求预览 JSON，不调用真实服务。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe comfyui-smoke-check outputs\shou-zhu-dai-tu --workflow workflows\comfyui\text2image_sdxl.placeholder.json --manifest data\models\models_manifest.json`：按预期失败，并写出 placeholder / manifest 待审核问题。
 
 ## 当前加固内容
 
@@ -58,3 +59,6 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
   `08_lipsync_jobs.json`。
 - 当前配音和口型同步仍是 mock-only：生成文本资产和任务记录，不调用真实 TTS 或口型渲染服务。
 - ComfyUI 当前只支持 dry-run：写出 `comfyui_dry_run/jobs.json` 和 request preview，不访问本地 ComfyUI。
+- `comfyui-smoke-check` 会写出 `quality_reports/comfyui_smoke_check.json`，用于离线确认 workflow、
+  模型 manifest、dry-run request preview 和 workflow 引用是否已经具备本地冒烟条件。
+- 默认情况下，仍包含 `placeholder` 或 `REVIEW_REQUIRED` 的 ComfyUI 配置会被冒烟检查拦下。
