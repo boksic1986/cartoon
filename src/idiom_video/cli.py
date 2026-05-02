@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Any, Callable
 
 import typer
 
@@ -18,6 +19,7 @@ from idiom_video.schemas import (
     IdiomProfile,
     ImageGenerationJob,
     ImagePrompt,
+    PublishMetadata,
     ReviewItem,
     ReviewRecord,
     Script,
@@ -87,6 +89,28 @@ def _quality_issue(message: str, path: str | None = None) -> QualityIssue:
     return QualityIssue(message=message, path=path)
 
 
+def _validate_json_artifact(
+    story_dir: Path,
+    checks: dict[str, str],
+    issues: list[QualityIssue],
+    check_name: str,
+    relative_path: str,
+    validator: Callable[[Any], Any],
+) -> Any | None:
+    path = story_dir / relative_path
+    if not path.exists():
+        checks[check_name] = "failed"
+        return None
+    try:
+        artifact = validator(read_json(path))
+    except Exception as exc:
+        checks[check_name] = "failed"
+        issues.append(_quality_issue(f"{relative_path} schema validation failed: {exc}", relative_path))
+        return None
+    checks[check_name] = "passed"
+    return artifact
+
+
 def _run_full_quality_check(story_dir: Path) -> dict:
     issues: list[QualityIssue] = []
     checks: dict[str, str] = {}
@@ -105,6 +129,48 @@ def _run_full_quality_check(story_dir: Path) -> dict:
     for name in missing_required:
         issues.append(_quality_issue("required artifact missing", name))
 
+    _validate_json_artifact(story_dir, checks, issues, "script_schema", "01_script.json", Script.model_validate)
+    storyboard = _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "storyboard_schema",
+        "02_storyboard.json",
+        Storyboard.model_validate,
+    )
+    _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "image_prompts_schema",
+        "03_image_prompts.json",
+        lambda data: [ImagePrompt.model_validate(item) for item in data],
+    )
+    _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "image_jobs_schema",
+        "04_image_jobs.json",
+        lambda data: [ImageGenerationJob.model_validate(item) for item in data],
+    )
+    video_jobs = _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "video_jobs_schema",
+        "05_video_jobs.json",
+        lambda data: [VideoGenerationJob.model_validate(item) for item in data],
+    )
+    _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "metadata_schema",
+        "final/metadata.json",
+        PublishMetadata.model_validate,
+    )
+
     prompt_report_path = story_dir / "quality_reports" / "prompt_quality.json"
     if prompt_report_path.exists():
         prompt_report = read_json(prompt_report_path)
@@ -115,26 +181,22 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         checks["prompt_quality"] = "failed"
         issues.append(_quality_issue("prompt quality report missing", "quality_reports/prompt_quality.json"))
 
-    try:
-        storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
+    if storyboard is not None:
         checks["storyboard_timing"] = "passed"
         if len(storyboard.scenes) > get_settings().max_scenes:
             checks["storyboard_timing"] = "failed"
             issues.append(_quality_issue("storyboard scene count exceeds limit", "02_storyboard.json"))
-    except Exception as exc:
+    else:
         checks["storyboard_timing"] = "failed"
-        issues.append(_quality_issue(f"storyboard validation failed: {exc}", "02_storyboard.json"))
 
     approved_image_missing = False
-    try:
-        video_jobs = [VideoGenerationJob.model_validate(item) for item in read_json(story_dir / "05_video_jobs.json")]
+    if video_jobs is None:
+        approved_image_missing = True
+    else:
         for job in video_jobs:
             if not Path(job.image_path).exists():
                 approved_image_missing = True
                 issues.append(_quality_issue("approved image missing", job.image_path))
-    except Exception as exc:
-        approved_image_missing = True
-        issues.append(_quality_issue(f"video jobs validation failed: {exc}", "05_video_jobs.json"))
     checks["approved_images"] = "failed" if approved_image_missing else "passed"
 
     review_failed = False

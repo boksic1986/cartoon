@@ -3,14 +3,18 @@ from __future__ import annotations
 from pathlib import PureWindowsPath
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 SpeechKind = Literal["narration", "dialogue"]
 MouthAction = Literal["none", "speaking_simple", "reaction"]
 
 
-class CharacterProfile(BaseModel):
+class StrictSchemaModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CharacterProfile(StrictSchemaModel):
     id: str
     name: str
     role: str
@@ -18,14 +22,14 @@ class CharacterProfile(BaseModel):
     voice_description: str
 
 
-class SceneProfile(BaseModel):
+class SceneProfile(StrictSchemaModel):
     id: str
     location: str
     era: str
     description: str
 
 
-class IdiomProfile(BaseModel):
+class IdiomProfile(StrictSchemaModel):
     idiom: str
     pinyin: str
     slug: str
@@ -45,7 +49,7 @@ class IdiomProfile(BaseModel):
         return value
 
 
-class SpeechCue(BaseModel):
+class SpeechCue(StrictSchemaModel):
     cue_id: str
     scene_id: str
     speaker_id: str
@@ -66,7 +70,7 @@ class SpeechCue(BaseModel):
         return self
 
 
-class ScriptScene(BaseModel):
+class ScriptScene(StrictSchemaModel):
     scene_id: str
     order: int = Field(ge=1)
     title: str
@@ -76,7 +80,7 @@ class ScriptScene(BaseModel):
     speech_cues: list[SpeechCue]
 
 
-class Script(BaseModel):
+class Script(StrictSchemaModel):
     idiom_slug: str
     title: str
     moral: str
@@ -92,7 +96,7 @@ class Script(BaseModel):
         return self
 
 
-class StoryboardScene(BaseModel):
+class StoryboardScene(StrictSchemaModel):
     scene_id: str
     order: int = Field(ge=1)
     title: str
@@ -105,7 +109,7 @@ class StoryboardScene(BaseModel):
     speech_cues: list[SpeechCue]
 
 
-class Storyboard(BaseModel):
+class Storyboard(StrictSchemaModel):
     idiom_slug: str
     title: str
     aspect_ratio: str = "9:16"
@@ -127,7 +131,7 @@ class Storyboard(BaseModel):
         return self
 
 
-class ImagePrompt(BaseModel):
+class ImagePrompt(StrictSchemaModel):
     prompt_id: str
     scene_id: str
     prompt: str
@@ -137,7 +141,7 @@ class ImagePrompt(BaseModel):
     height: int = Field(gt=0)
 
 
-class ImageGenerationJob(BaseModel):
+class ImageGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str
     prompt: str
@@ -155,7 +159,7 @@ class ImageGenerationJob(BaseModel):
         return value
 
 
-class ImageAsset(BaseModel):
+class ImageAsset(StrictSchemaModel):
     asset_id: str
     scene_id: str
     path: str
@@ -166,7 +170,7 @@ class ImageAsset(BaseModel):
     height: int = Field(gt=0)
 
 
-class VideoGenerationJob(BaseModel):
+class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str
     image_path: str
@@ -176,7 +180,7 @@ class VideoGenerationJob(BaseModel):
     provider: str = "mock"
 
 
-class VideoClip(BaseModel):
+class VideoClip(StrictSchemaModel):
     clip_id: str
     scene_id: str
     path: str
@@ -184,14 +188,14 @@ class VideoClip(BaseModel):
     provider: str = "mock"
 
 
-class SubtitleCue(BaseModel):
+class SubtitleCue(StrictSchemaModel):
     index: int = Field(ge=1)
     start_seconds: float = Field(ge=0)
     end_seconds: float = Field(gt=0)
     text: str
 
 
-class PublishMetadata(BaseModel):
+class PublishMetadata(StrictSchemaModel):
     title: str
     idiom_slug: str
     moral: str
@@ -205,7 +209,7 @@ ReviewType = Literal["script", "image", "video"]
 ReviewStatus = Literal["approved", "rejected", "pending"]
 
 
-class ReviewItem(BaseModel):
+class ReviewItem(StrictSchemaModel):
     item_id: str
     status: ReviewStatus
     scene_id: str | None = None
@@ -214,7 +218,7 @@ class ReviewItem(BaseModel):
     notes: str = ""
 
 
-class ReviewRecord(BaseModel):
+class ReviewRecord(StrictSchemaModel):
     review_type: ReviewType
     auto: bool = False
     items: list[ReviewItem]
