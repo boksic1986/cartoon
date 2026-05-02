@@ -28,6 +28,12 @@ def test_quality_check_writes_full_report_for_mock_run(tmp_path, monkeypatch):
     assert report["checks"]["image_prompts_schema"] == "passed"
     assert report["checks"]["image_jobs_schema"] == "passed"
     assert report["checks"]["video_jobs_schema"] == "passed"
+    assert report["checks"]["voice_jobs_schema"] == "passed"
+    assert report["checks"]["alignment_schema"] == "passed"
+    assert report["checks"]["lipsync_jobs_schema"] == "passed"
+    assert report["checks"]["voice_assets"] == "passed"
+    assert report["checks"]["alignment_assets"] == "passed"
+    assert report["checks"]["lipsync_outputs"] == "passed"
     assert report["checks"]["metadata_schema"] == "passed"
     assert report["checks"]["approved_images"] == "passed"
     assert report["checks"]["review_records"] == "passed"
@@ -77,6 +83,9 @@ def test_quality_check_fails_when_review_item_is_pending(tmp_path, monkeypatch):
         ("03_image_prompts.json", (0, "prompt"), "image_prompts_schema"),
         ("04_image_jobs.json", (0, "output_path"), "image_jobs_schema"),
         ("05_video_jobs.json", (0, "output_path"), "video_jobs_schema"),
+        ("06_voice_jobs.json", (0, "output_path"), "voice_jobs_schema"),
+        ("07_alignment.json", (0, "audio_path"), "alignment_schema"),
+        ("08_lipsync_jobs.json", (0, "output_path"), "lipsync_jobs_schema"),
         ("final/metadata.json", ("title",), "metadata_schema"),
     ],
 )
@@ -123,3 +132,55 @@ def test_quality_check_fails_core_artifact_unknown_field(tmp_path, monkeypatch):
     report = read_json(story_dir / "quality_reports" / "full_quality.json")
     assert report["checks"]["script_schema"] == "failed"
     assert any("unexpected_field" in issue["message"] for issue in report["issues"])
+
+
+def test_quality_check_fails_when_voice_asset_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    (story_dir / "audio" / "scene_01_narration.txt").unlink()
+
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["voice_assets"] == "failed"
+    assert any("voice asset missing" in issue["message"] for issue in report["issues"])
+
+
+def test_quality_check_fails_when_alignment_audio_reference_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    alignment_path = story_dir / "07_alignment.json"
+    alignment = read_json(alignment_path)
+    alignment[0]["audio_path"] = (story_dir / "audio" / "missing.txt").as_posix()
+    write_json(alignment_path, alignment)
+
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["alignment_assets"] == "failed"
+    assert any("alignment audio missing" in issue["message"] for issue in report["issues"])
+
+
+def test_quality_check_fails_when_lipsync_output_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    lipsync_jobs = read_json(story_dir / "08_lipsync_jobs.json")
+    Path(lipsync_jobs[0]["output_path"]).unlink()
+
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["lipsync_outputs"] == "failed"
+    assert any("lipsync output missing" in issue["message"] for issue in report["issues"])

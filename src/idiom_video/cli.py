@@ -13,24 +13,30 @@ from idiom_video.media.metadata_writer import write_publish_metadata
 from idiom_video.media.subtitle import storyboard_to_srt
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
 from idiom_video.providers.image_mock import ImageMockProvider
+from idiom_video.providers.tts_mock import TTSMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
 from idiom_video.schemas import (
+    AlignmentCue,
     IdiomProfile,
     ImageGenerationJob,
     ImagePrompt,
+    LipSyncJob,
     PublishMetadata,
     ReviewItem,
     ReviewRecord,
     Script,
     Storyboard,
     VideoGenerationJob,
+    VoiceAsset,
+    VoiceJob,
 )
 from idiom_video.script_writer import build_script
 from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
 from idiom_video.utils.logging import info, warn
 from idiom_video.utils.paths import output_dir_for_slug, project_root
+from idiom_video.voice_builder import build_alignment, build_lipsync_jobs, build_voice_jobs
 
 
 app = typer.Typer(help="Mock-first pipeline for idiom story short videos.")
@@ -121,6 +127,10 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         "03_image_prompts.json",
         "04_image_jobs.json",
         "05_video_jobs.json",
+        "06_voice_jobs.json",
+        "audio/voice_assets.json",
+        "07_alignment.json",
+        "08_lipsync_jobs.json",
         "subtitles/final.srt",
         "final/metadata.json",
     ]
@@ -166,6 +176,38 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         story_dir,
         checks,
         issues,
+        "voice_jobs_schema",
+        "06_voice_jobs.json",
+        lambda data: [VoiceJob.model_validate(item) for item in data],
+    )
+    voice_assets = _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "voice_assets_schema",
+        "audio/voice_assets.json",
+        lambda data: [VoiceAsset.model_validate(item) for item in data],
+    )
+    alignment = _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "alignment_schema",
+        "07_alignment.json",
+        lambda data: [AlignmentCue.model_validate(item) for item in data],
+    )
+    lipsync_jobs = _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
+        "lipsync_jobs_schema",
+        "08_lipsync_jobs.json",
+        lambda data: [LipSyncJob.model_validate(item) for item in data],
+    )
+    _validate_json_artifact(
+        story_dir,
+        checks,
+        issues,
         "metadata_schema",
         "final/metadata.json",
         PublishMetadata.model_validate,
@@ -198,6 +240,39 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                 approved_image_missing = True
                 issues.append(_quality_issue("approved image missing", job.image_path))
     checks["approved_images"] = "failed" if approved_image_missing else "passed"
+
+    voice_asset_missing = False
+    if voice_assets is None:
+        voice_asset_missing = True
+    else:
+        for asset in voice_assets:
+            if not Path(asset.path).exists():
+                voice_asset_missing = True
+                issues.append(_quality_issue("voice asset missing", asset.path))
+            if not Path(asset.metadata_path).exists():
+                voice_asset_missing = True
+                issues.append(_quality_issue("voice asset metadata missing", asset.metadata_path))
+    checks["voice_assets"] = "failed" if voice_asset_missing else "passed"
+
+    alignment_asset_missing = False
+    if alignment is None:
+        alignment_asset_missing = True
+    else:
+        for cue in alignment:
+            if not Path(cue.audio_path).exists():
+                alignment_asset_missing = True
+                issues.append(_quality_issue("alignment audio missing", cue.audio_path))
+    checks["alignment_assets"] = "failed" if alignment_asset_missing else "passed"
+
+    lipsync_output_missing = False
+    if lipsync_jobs is None:
+        lipsync_output_missing = True
+    else:
+        for job in lipsync_jobs:
+            if not Path(job.output_path).exists():
+                lipsync_output_missing = True
+                issues.append(_quality_issue("lipsync output missing", job.output_path))
+    checks["lipsync_outputs"] = "failed" if lipsync_output_missing else "passed"
 
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
@@ -271,6 +346,12 @@ def _write_image_prompts(storyboard_path: Path) -> tuple[Path, Path]:
     prompts_path = write_json(storyboard_path.parent / "03_image_prompts.json", prompts)
     jobs_path = write_json(storyboard_path.parent / "04_image_jobs.json", jobs)
     return prompts_path, jobs_path
+
+
+def _write_voice_jobs(storyboard_path: Path) -> Path:
+    storyboard = Storyboard.model_validate(read_json(storyboard_path))
+    jobs = build_voice_jobs(storyboard, storyboard_path.parent)
+    return write_json(storyboard_path.parent / "06_voice_jobs.json", jobs)
 
 
 @app.command()
@@ -391,6 +472,42 @@ def generate_videos(video_jobs_path: Path, provider: str = typer.Option("mock", 
     info(f"generated {len(clips)} mock video records")
 
 
+@app.command(name="build-voice-jobs")
+def build_voice_jobs_command(storyboard_path: Path) -> None:
+    path = _write_voice_jobs(storyboard_path)
+    info(f"wrote {path}")
+
+
+@app.command(name="generate-audio")
+def generate_audio(voice_jobs_path: Path, provider: str = typer.Option("mock", "--provider")) -> None:
+    if provider != "mock":
+        raise typer.BadParameter("first milestone only supports --provider mock")
+    jobs = [VoiceJob.model_validate(item) for item in read_json(voice_jobs_path)]
+    provider_impl = TTSMockProvider()
+    assets = [provider_impl.synthesize(job) for job in jobs]
+    write_json(voice_jobs_path.parent / "audio" / "voice_assets.json", assets)
+    storyboard = Storyboard.model_validate(read_json(voice_jobs_path.parent / "02_storyboard.json"))
+    alignment = build_alignment(storyboard, jobs)
+    write_json(voice_jobs_path.parent / "07_alignment.json", alignment)
+    info(f"generated {len(assets)} mock voice assets")
+    info(f"wrote {voice_jobs_path.parent / '07_alignment.json'}")
+
+
+@app.command(name="build-lipsync-jobs")
+def build_lipsync_jobs_command(alignment_path: Path) -> None:
+    alignment = [AlignmentCue.model_validate(item) for item in read_json(alignment_path)]
+    jobs = build_lipsync_jobs(alignment, alignment_path.parent)
+    for job in jobs:
+        output = Path(job.output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            f"Mock lip-sync placeholder.\ncue_id={job.cue_id}\nenabled={job.enabled}\nreason={job.reason}\n",
+            encoding="utf-8",
+        )
+    path = write_json(alignment_path.parent / "08_lipsync_jobs.json", jobs)
+    info(f"wrote {path}")
+
+
 @app.command(name="quality-check")
 def quality_check(story_dir: Path) -> None:
     report = _run_full_quality_check(story_dir)
@@ -437,6 +554,9 @@ def run_all(idiom_path: Path, providers: str = typer.Option("mock", "--providers
     generate_images(prompts_path, provider="mock")
     approve_images(prompts_path.parent / "images_raw", auto=True)
     generate_videos(prompts_path.parent / "05_video_jobs.json", provider="mock")
+    voice_jobs_path = _write_voice_jobs(storyboard_path)
+    generate_audio(voice_jobs_path, provider="mock")
+    build_lipsync_jobs_command(voice_jobs_path.parent / "07_alignment.json")
     generate_subtitles(storyboard_path)
     compose(prompts_path.parent)
     publish_metadata(prompts_path.parent)
