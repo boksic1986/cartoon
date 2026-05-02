@@ -25,6 +25,8 @@
 - 动作温和自然。
 - 不出现身份突变、画面融化、镜头剧烈不稳等问题。
 - 镜头时长与旁白、字幕 cue 基本匹配。
+- Seedance dry-run 只表示请求预览已生成，不代表真实视频已生成或已审核。
+- 使用 Seedance dry-run 时，`seedance_dry_run/jobs.json` 和每个 request preview JSON 都应可人工审查。
 
 ## 配音与口型审核
 
@@ -44,6 +46,7 @@
 - 如存在 ComfyUI dry-run 产物，`quality-check` 已确认 workflow 路径和 request preview 文件存在。
 - 如果准备进入真实 ComfyUI 冒烟阶段，`comfyui-smoke-check` 已确认 dry-run workflow 与本次检查的
   workflow 一致。
+- 如存在 Seedance dry-run 产物，`quality-check` 已确认首帧图片路径和 request preview 文件存在。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

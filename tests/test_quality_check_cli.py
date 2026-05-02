@@ -243,3 +243,57 @@ def test_quality_check_fails_when_comfyui_dry_run_preview_is_missing(tmp_path, m
     report = read_json(story_dir / "quality_reports" / "full_quality.json")
     assert report["checks"]["comfyui_dry_run_files"] == "failed"
     assert any("dry-run request preview missing" in issue["message"] for issue in report["issues"])
+
+
+def test_quality_check_validates_seedance_dry_run_jobs_when_present(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    dry_run = runner.invoke(
+        app,
+        [
+            "generate-videos",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "05_video_jobs.json"),
+            "--provider",
+            "seedance",
+            "--dry-run",
+        ],
+    )
+    assert dry_run.exit_code == 0, dry_run.output
+
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code == 0, result.output
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["seedance_dry_run_schema"] == "passed"
+    assert report["checks"]["seedance_dry_run_files"] == "passed"
+
+
+def test_quality_check_fails_when_seedance_dry_run_preview_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    dry_run = runner.invoke(
+        app,
+        [
+            "generate-videos",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "05_video_jobs.json"),
+            "--provider",
+            "seedance",
+            "--dry-run",
+        ],
+    )
+    assert dry_run.exit_code == 0, dry_run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    dry_run_jobs = read_json(story_dir / "seedance_dry_run" / "jobs.json")
+    Path(dry_run_jobs[0]["request_preview_path"]).unlink()
+
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["seedance_dry_run_files"] == "failed"
+    assert any("Seedance dry-run request preview missing" in issue["message"] for issue in report["issues"])

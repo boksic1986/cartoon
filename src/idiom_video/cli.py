@@ -17,6 +17,7 @@ from idiom_video.providers.image_comfyui import ComfyUIImageProvider
 from idiom_video.providers.image_mock import ImageMockProvider
 from idiom_video.providers.tts_mock import TTSMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
+from idiom_video.providers.video_seedance import SeedanceVideoProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
 from idiom_video.schemas import (
     AlignmentCue,
@@ -29,6 +30,7 @@ from idiom_video.schemas import (
     ReviewItem,
     ReviewRecord,
     Script,
+    SeedanceDryRunJob,
     Storyboard,
     VideoGenerationJob,
     VoiceAsset,
@@ -228,6 +230,19 @@ def _run_full_quality_check(story_dir: Path) -> dict:
     else:
         dry_run_jobs = None
         checks["comfyui_dry_run_schema"] = "skipped"
+    seedance_dry_run_jobs_path = story_dir / "seedance_dry_run" / "jobs.json"
+    if seedance_dry_run_jobs_path.exists():
+        seedance_dry_run_jobs = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "seedance_dry_run_schema",
+            "seedance_dry_run/jobs.json",
+            lambda data: [SeedanceDryRunJob.model_validate(item) for item in data],
+        )
+    else:
+        seedance_dry_run_jobs = None
+        checks["seedance_dry_run_schema"] = "skipped"
     _validate_json_artifact(
         story_dir,
         checks,
@@ -310,6 +325,19 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                 comfyui_dry_run_missing = True
                 issues.append(_quality_issue("ComfyUI dry-run request preview missing", job.request_preview_path))
         checks["comfyui_dry_run_files"] = "failed" if comfyui_dry_run_missing else "passed"
+
+    seedance_dry_run_missing = False
+    if seedance_dry_run_jobs is None:
+        checks["seedance_dry_run_files"] = "skipped"
+    else:
+        for job in seedance_dry_run_jobs:
+            if not Path(job.image_path).exists():
+                seedance_dry_run_missing = True
+                issues.append(_quality_issue("Seedance dry-run image missing", job.image_path))
+            if not Path(job.request_preview_path).exists():
+                seedance_dry_run_missing = True
+                issues.append(_quality_issue("Seedance dry-run request preview missing", job.request_preview_path))
+        checks["seedance_dry_run_files"] = "failed" if seedance_dry_run_missing else "passed"
 
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
@@ -509,12 +537,31 @@ def approve_images(images_raw_dir: Path, auto: bool = typer.Option(False, "--aut
 
 
 @app.command()
-def generate_videos(video_jobs_path: Path, provider: str = typer.Option("mock", "--provider")) -> None:
-    if provider != "mock":
-        raise typer.BadParameter("first milestone only supports --provider mock")
+def generate_videos(
+    video_jobs_path: Path,
+    provider: str = typer.Option("mock", "--provider"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
     jobs = [VideoGenerationJob.model_validate(item) for item in read_json(video_jobs_path)]
-    provider_impl = VideoMockProvider()
-    clips = [provider_impl.generate(job) for job in jobs]
+    if provider == "mock":
+        if dry_run:
+            raise typer.BadParameter("--dry-run is only supported for --provider seedance")
+        provider_impl = VideoMockProvider()
+        clips = [provider_impl.generate(job) for job in jobs]
+    elif provider == "seedance":
+        if not dry_run:
+            raise typer.BadParameter("real Seedance generation is deferred; use --dry-run")
+        provider_impl = SeedanceVideoProvider(dry_run=True)
+        seedance_jobs: list[SeedanceDryRunJob] = []
+        clips = []
+        for job in jobs:
+            seedance_job = job.model_copy(update={"provider": "seedance"})
+            clip = provider_impl.generate(seedance_job)
+            clips.append(clip)
+            seedance_jobs.append(SeedanceDryRunJob.model_validate(read_json(clip.path)))
+        write_json(video_jobs_path.parent / "seedance_dry_run" / "jobs.json", seedance_jobs)
+    else:
+        raise typer.BadParameter("supported video providers: mock, seedance")
     write_json(video_jobs_path.parent / "videos" / "clips.json", clips)
     _write_review_record(
         video_jobs_path.parent,
@@ -525,12 +572,15 @@ def generate_videos(video_jobs_path: Path, provider: str = typer.Option("mock", 
                 scene_id=clip.scene_id,
                 clip_path=Path(clip.path).as_posix(),
                 status="approved",
-                notes="mock 流程自动审核通过，真实视频需要人工复核。",
+                notes="mock/dry-run 流程自动审核通过，真实视频需要人工复核。",
             )
             for clip in clips
         ],
     )
-    info(f"generated {len(clips)} mock video records")
+    if provider == "seedance":
+        info(f"generated {len(clips)} Seedance dry-run video jobs")
+    else:
+        info(f"generated {len(clips)} mock video records")
 
 
 @app.command(name="build-voice-jobs")
@@ -636,7 +686,7 @@ def run_all(idiom_path: Path, providers: str = typer.Option("mock", "--providers
     prompts_path, _jobs_path = _write_image_prompts(storyboard_path)
     generate_images(prompts_path, provider="mock", dry_run=False, workflow=None)
     approve_images(prompts_path.parent / "images_raw", auto=True)
-    generate_videos(prompts_path.parent / "05_video_jobs.json", provider="mock")
+    generate_videos(prompts_path.parent / "05_video_jobs.json", provider="mock", dry_run=False)
     voice_jobs_path = _write_voice_jobs(storyboard_path)
     generate_audio(voice_jobs_path, provider="mock")
     build_lipsync_jobs_command(voice_jobs_path.parent / "07_alignment.json")

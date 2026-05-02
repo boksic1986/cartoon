@@ -108,3 +108,20 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 2. 用真实 workflow 路径重新运行 `generate-images --provider comfyui --dry-run`，再运行
    `comfyui-smoke-check`。
 3. 冒烟稳定后，再开发真实 ComfyUI provider：prompt 提交、任务轮询、图片下载和失败重试。
+
+## Phase 1.7 Seedance 视频接入准备层
+
+已完成：
+
+1. 新增 `SeedanceDryRunJob` schema，用于记录视频生成请求预览。
+2. `generate-videos --provider seedance --dry-run` 会读取 `05_video_jobs.json`，并写出
+   `seedance_dry_run/jobs.json` 和每个镜头的 request preview JSON。
+3. dry-run provider 不访问真实视频服务，不生成真实视频，不需要 API key。
+4. `quality-check` 会在 dry-run 产物存在时校验 Seedance dry-run schema、首帧图片路径和
+   request preview 文件。
+
+下一步建议：
+
+1. 为真实 Seedance provider 设计 task id、状态、轮询间隔、失败原因和重试记录字段。
+2. 真实视频接入前，补充视频任务的人工审核表单或 JSON 编辑约束。
+3. 等真实图片风格稳定后，再用审核通过的首帧图片做 Seedance 手动冒烟测试。

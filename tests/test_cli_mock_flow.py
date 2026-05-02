@@ -121,3 +121,29 @@ def test_generate_images_comfyui_dry_run_writes_reviewable_jobs(tmp_path, monkey
     assert assets[0]["provider"] == "comfyui"
     assert dry_run_jobs[0]["dry_run"] is True
     assert Path(assets[0]["path"]).exists()
+
+
+def test_generate_videos_seedance_dry_run_writes_reviewable_jobs(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    commands = [
+        ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"],
+        [
+            "generate-videos",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "05_video_jobs.json"),
+            "--provider",
+            "seedance",
+            "--dry-run",
+        ],
+    ]
+
+    for command in commands:
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, f"{command}: {result.output}"
+
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    clips = read_json(story_dir / "videos" / "clips.json")
+    dry_run_jobs = read_json(story_dir / "seedance_dry_run" / "jobs.json")
+    assert clips[0]["provider"] == "seedance"
+    assert dry_run_jobs[0]["dry_run"] is True
+    assert Path(clips[0]["path"]).exists()

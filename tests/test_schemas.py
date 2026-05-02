@@ -11,6 +11,7 @@ from idiom_video.schemas import (
     IdiomProfile,
     LipSyncJob,
     ModelManifest,
+    SeedanceDryRunJob,
     Storyboard,
     StoryboardScene,
     VoiceJob,
@@ -165,3 +166,24 @@ def test_model_manifest_and_comfyui_smoke_report_schemas_are_strict():
 
     with pytest.raises(ValidationError):
         ComfyUISmokeCheckIssue.model_validate({"message": "x", "unexpected": "reject"})
+
+
+def test_seedance_dry_run_job_schema_is_strict():
+    job = SeedanceDryRunJob(
+        dry_run_id="seedance_video_scene_01",
+        source_job_id="video_scene_01",
+        scene_id="scene_01",
+        image_path="outputs/story/images_approved/scene_01.png",
+        prompt="温和推镜，人物轻微动作。",
+        duration_seconds=5,
+        intended_output_path="outputs/story/videos/scene_01.txt",
+        request_preview_path="outputs/story/videos/scene_01.seedance_dry_run.json",
+    )
+
+    assert job.provider == "seedance"
+    assert job.dry_run is True
+
+    payload = job.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        SeedanceDryRunJob.model_validate(payload)

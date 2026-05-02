@@ -246,6 +246,19 @@ class VideoClip(StrictSchemaModel):
     provider: str = "mock"
 
 
+class SeedanceDryRunJob(StrictSchemaModel):
+    dry_run_id: str
+    source_job_id: str
+    scene_id: str
+    image_path: str
+    prompt: str
+    duration_seconds: float = Field(gt=0, le=10)
+    intended_output_path: str
+    request_preview_path: str
+    provider: str = "seedance"
+    dry_run: bool = True
+
+
 class VoiceJob(StrictSchemaModel):
     job_id: str
     cue_id: str

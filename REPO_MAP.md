@@ -36,6 +36,7 @@
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
+- `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/lipsync/`：mock 口型任务占位结果，默认被 git 忽略。
 
