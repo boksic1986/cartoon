@@ -20,12 +20,24 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
 下一步建议：
 
-1. 增加独立 `quality-check` CLI 命令，用于检查已经生成的产物。
-2. 为装有 FFmpeg 的机器补充可选冒烟测试说明。
-3. 在真实 provider 开发前，先补 ComfyUI 本地冒烟测试清单。
+1. 为装有 FFmpeg 的机器补充可选冒烟测试说明。
+2. 在真实 provider 开发前，先补 ComfyUI 本地冒烟测试清单。
+3. 为真实图片/视频接入设计人工审核 UI 或轻量表单。
 
 ## 延后阶段
 
 1. 通过本地冒烟测试后，再实现真实 ComfyUI 图片 provider。
 2. Seedance dry-run 任务记录稳定后，再实现真实视频 provider。
 3. 剧本和分镜 timing 稳定后，再接真实 TTS、音频对齐和口型同步 provider。
+
+## Phase 1.2 审核闭环
+
+已完成：
+
+1. 增加 `quality-check` CLI，用于检查已生成产物。
+2. 写出 `quality_reports/full_quality.json`。
+3. mock 流程生成 `review/script_review.json`、`review/image_review.json`、
+   `review/video_review.json`。
+4. `approve-images --auto` 写入图片审核记录。
+5. `quality-check` 会解析 review item 状态，遇到 `pending` 或 `rejected` 会失败。
+6. `approve-images --auto` 不会批准缺失图片，缺图 scene 会记录为 `pending`。

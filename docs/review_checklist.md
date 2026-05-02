@@ -27,3 +27,7 @@
 - 元数据不包含 API key 或本地敏感信息。
 - 真实发布前，模型和素材许可证已经记录并审核。
 - 最终产物存放在 `outputs/{idiom_slug}/` 下。
+- `quality_reports/full_quality.json` 为 `ok=true`。
+- `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
+  已由人工确认或明确保留 mock 自动审核状态。
+- review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

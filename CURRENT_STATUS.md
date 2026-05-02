@@ -1,6 +1,6 @@
 # 当前状态
 
-状态：Phase 1.1 加固中。
+状态：Phase 1.2 审核闭环开发中。
 
 ## Git
 
@@ -29,13 +29,16 @@
 ```powershell
 D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock
+D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu
 ```
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：17 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：24 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
+- `outputs/shou-zhu-dai-tu/quality_reports/full_quality.json`：`ok=true`，无问题。
 
 ## 当前加固内容
 
@@ -43,3 +46,8 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\
 - 正向图片提示词包含禁用词时会阻断流程。
 - 单步 CLI 流程已纳入集成测试。
 - 核心项目文档已中文化，以便更贴合成语故事创作和人工审查。
+- `quality-check` 会写出 `quality_reports/full_quality.json`。
+- mock 流程会写出 `review/script_review.json`、`review/image_review.json`、
+  `review/video_review.json`。
+- `quality-check` 会解析审核状态，`pending` 或 `rejected` 会导致检查失败。
+- 缺失 raw 图片不会被自动批准，会在 `image_review.json` 中记录为 `pending`。

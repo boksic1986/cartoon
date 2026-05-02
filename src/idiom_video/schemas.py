@@ -199,3 +199,23 @@ class PublishMetadata(BaseModel):
     files: dict[str, str]
     providers: dict[str, str]
     notes: list[str] = Field(default_factory=list)
+
+
+ReviewType = Literal["script", "image", "video"]
+ReviewStatus = Literal["approved", "rejected", "pending"]
+
+
+class ReviewItem(BaseModel):
+    item_id: str
+    status: ReviewStatus
+    scene_id: str | None = None
+    asset_path: str | None = None
+    clip_path: str | None = None
+    notes: str = ""
+
+
+class ReviewRecord(BaseModel):
+    review_type: ReviewType
+    auto: bool = False
+    items: list[ReviewItem]
+    summary: dict[str, int]
