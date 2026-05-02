@@ -13,11 +13,13 @@ from idiom_video.media.subtitle import storyboard_to_srt
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
 from idiom_video.providers.image_mock import ImageMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
-from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms
+from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
 from idiom_video.schemas import (
     IdiomProfile,
     ImageGenerationJob,
     ImagePrompt,
+    ReviewItem,
+    ReviewRecord,
     Script,
     Storyboard,
     VideoGenerationJob,
@@ -67,11 +69,119 @@ def _write_prompt_quality_report(story_dir: Path, prompts: list[ImagePrompt]) ->
     return quality
 
 
+def _write_review_record(story_dir: Path, review_type: str, items: list[ReviewItem], auto: bool = True) -> ReviewRecord:
+    approved = sum(1 for item in items if item.status == "approved")
+    rejected = sum(1 for item in items if item.status == "rejected")
+    pending = sum(1 for item in items if item.status == "pending")
+    record = ReviewRecord(
+        review_type=review_type,
+        auto=auto,
+        items=items,
+        summary={"approved": approved, "rejected": rejected, "pending": pending},
+    )
+    write_json(story_dir / "review" / f"{review_type}_review.json", record)
+    return record
+
+
+def _quality_issue(message: str, path: str | None = None) -> QualityIssue:
+    return QualityIssue(message=message, path=path)
+
+
+def _run_full_quality_check(story_dir: Path) -> dict:
+    issues: list[QualityIssue] = []
+    checks: dict[str, str] = {}
+
+    required_files = [
+        "01_script.json",
+        "02_storyboard.json",
+        "03_image_prompts.json",
+        "04_image_jobs.json",
+        "05_video_jobs.json",
+        "subtitles/final.srt",
+        "final/metadata.json",
+    ]
+    missing_required = [name for name in required_files if not (story_dir / name).exists()]
+    checks["required_files"] = "failed" if missing_required else "passed"
+    for name in missing_required:
+        issues.append(_quality_issue("required artifact missing", name))
+
+    prompt_report_path = story_dir / "quality_reports" / "prompt_quality.json"
+    if prompt_report_path.exists():
+        prompt_report = read_json(prompt_report_path)
+        checks["prompt_quality"] = "passed" if prompt_report.get("ok") else "failed"
+        for issue in prompt_report.get("issues", []):
+            issues.append(QualityIssue.model_validate(issue))
+    else:
+        checks["prompt_quality"] = "failed"
+        issues.append(_quality_issue("prompt quality report missing", "quality_reports/prompt_quality.json"))
+
+    try:
+        storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
+        checks["storyboard_timing"] = "passed"
+        if len(storyboard.scenes) > get_settings().max_scenes:
+            checks["storyboard_timing"] = "failed"
+            issues.append(_quality_issue("storyboard scene count exceeds limit", "02_storyboard.json"))
+    except Exception as exc:
+        checks["storyboard_timing"] = "failed"
+        issues.append(_quality_issue(f"storyboard validation failed: {exc}", "02_storyboard.json"))
+
+    approved_image_missing = False
+    try:
+        video_jobs = [VideoGenerationJob.model_validate(item) for item in read_json(story_dir / "05_video_jobs.json")]
+        for job in video_jobs:
+            if not Path(job.image_path).exists():
+                approved_image_missing = True
+                issues.append(_quality_issue("approved image missing", job.image_path))
+    except Exception as exc:
+        approved_image_missing = True
+        issues.append(_quality_issue(f"video jobs validation failed: {exc}", "05_video_jobs.json"))
+    checks["approved_images"] = "failed" if approved_image_missing else "passed"
+
+    review_failed = False
+    review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
+    for name in review_files:
+        path = story_dir / name
+        if not path.exists():
+            review_failed = True
+            issues.append(_quality_issue("review record missing", name))
+            continue
+        try:
+            record = ReviewRecord.model_validate(read_json(path))
+        except Exception as exc:
+            review_failed = True
+            issues.append(_quality_issue(f"review record validation failed: {exc}", name))
+            continue
+        for item in record.items:
+            if item.status != "approved":
+                review_failed = True
+                issues.append(_quality_issue(f"review item is {item.status}", f"{name}:{item.item_id}"))
+    checks["review_records"] = "failed" if review_failed else "passed"
+
+    manifest_path = project_root(Path(__file__).resolve()) / "data" / "models" / "models_manifest.json"
+    if manifest_path.exists():
+        manifest_result = validate_models_manifest(read_json(manifest_path))
+        checks["models_manifest"] = "passed" if manifest_result.ok else "failed"
+        issues.extend(manifest_result.issues)
+    else:
+        checks["models_manifest"] = "failed"
+        issues.append(_quality_issue("models manifest missing", str(manifest_path)))
+
+    report = {"ok": not issues, "checks": checks, "issues": [issue.model_dump(mode="json") for issue in issues]}
+    write_json(story_dir / "quality_reports" / "full_quality.json", report)
+    return report
+
+
 def _write_script(idiom_path: Path) -> Path:
     profile = IdiomProfile.model_validate(read_json(idiom_path))
     story_dir = _story_dir_for_profile(profile)
     script = build_script(profile)
-    return write_json(story_dir / "01_script.json", script)
+    script_path = write_json(story_dir / "01_script.json", script)
+    _write_review_record(
+        story_dir,
+        "script",
+        [ReviewItem(item_id="script", status="approved", notes="mock 流程自动通过，真实生产前需人工复核。")],
+    )
+    return script_path
 
 
 def _write_storyboard(script_path: Path) -> Path:
@@ -152,23 +262,45 @@ def approve_images(images_raw_dir: Path, auto: bool = typer.Option(False, "--aut
     story_dir = images_raw_dir.parent
     approved_dir = story_dir / "images_approved"
     approved_dir.mkdir(parents=True, exist_ok=True)
-    for png in sorted(images_raw_dir.glob("*.png")):
-        shutil.copy2(png, approved_dir / png.name)
-
     storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
     jobs: list[VideoGenerationJob] = []
+    review_items: list[ReviewItem] = []
     for scene in storyboard.scenes:
+        raw_path = images_raw_dir / f"{scene.scene_id}.png"
+        approved_path = approved_dir / f"{scene.scene_id}.png"
+        if not raw_path.exists():
+            review_items.append(
+                ReviewItem(
+                    item_id=f"image_{scene.scene_id}",
+                    scene_id=scene.scene_id,
+                    asset_path=None,
+                    status="pending",
+                    notes="未找到对应 raw 图片，等待重新生成或人工处理。",
+                )
+            )
+            continue
+        shutil.copy2(raw_path, approved_path)
         jobs.append(
             VideoGenerationJob(
                 job_id=f"video_{scene.scene_id}",
                 scene_id=scene.scene_id,
-                image_path=str(approved_dir / f"{scene.scene_id}.png"),
+                image_path=approved_path.as_posix(),
                 prompt=scene.video_prompt_hint,
                 duration_seconds=scene.duration_seconds,
-                output_path=str(story_dir / "videos" / f"{scene.scene_id}.txt"),
+                output_path=(story_dir / "videos" / f"{scene.scene_id}.txt").as_posix(),
+            )
+        )
+        review_items.append(
+            ReviewItem(
+                item_id=f"image_{scene.scene_id}",
+                scene_id=scene.scene_id,
+                asset_path=approved_path.as_posix(),
+                status="approved",
+                notes="mock 流程自动审核通过，真实图片需要人工复核。",
             )
         )
     write_json(story_dir / "05_video_jobs.json", jobs)
+    _write_review_record(story_dir, "image", review_items)
     info(f"approved images and wrote {len(jobs)} video jobs")
 
 
@@ -180,7 +312,30 @@ def generate_videos(video_jobs_path: Path, provider: str = typer.Option("mock", 
     provider_impl = VideoMockProvider()
     clips = [provider_impl.generate(job) for job in jobs]
     write_json(video_jobs_path.parent / "videos" / "clips.json", clips)
+    _write_review_record(
+        video_jobs_path.parent,
+        "video",
+        [
+            ReviewItem(
+                item_id=f"video_{clip.scene_id}",
+                scene_id=clip.scene_id,
+                clip_path=Path(clip.path).as_posix(),
+                status="approved",
+                notes="mock 流程自动审核通过，真实视频需要人工复核。",
+            )
+            for clip in clips
+        ],
+    )
     info(f"generated {len(clips)} mock video records")
+
+
+@app.command(name="quality-check")
+def quality_check(story_dir: Path) -> None:
+    report = _run_full_quality_check(story_dir)
+    if not report["ok"]:
+        warn("quality check failed; see quality_reports/full_quality.json")
+        raise typer.Exit(1)
+    info(f"quality check passed: {story_dir / 'quality_reports' / 'full_quality.json'}")
 
 
 @app.command()

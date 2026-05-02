@@ -56,6 +56,10 @@ outputs/shou-zhu-dai-tu/
 04_image_jobs.json
 05_video_jobs.json
 quality_reports/prompt_quality.json
+quality_reports/full_quality.json
+review/script_review.json
+review/image_review.json
+review/video_review.json
 subtitles/final.srt
 final/metadata.json
 final/final_mock.mp4 或 final/final_mock.txt
@@ -74,11 +78,34 @@ idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provide
 idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
+idiom-video quality-check outputs/shou-zhu-dai-tu/
 ```
 
 `build-image-prompts` 会写出 `quality_reports/prompt_quality.json`。第一阶段只检查正向
 图片提示词是否包含禁用词；如果需要人工审查，会在生成图片前停止。`negative_prompt`
 可以包含被排除的概念，因为它表达的是“不要生成这些内容”。
+
+`quality-check` 会检查完整产物链路，并写出
+`quality_reports/full_quality.json`。当前检查包括必需产物、prompt 质量报告、分镜时长、
+已审核图片是否存在、review 记录、模型 manifest 字段。
+
+## 审核记录
+
+mock 阶段会生成可人工编辑的审核状态 JSON：
+
+```txt
+review/script_review.json
+review/image_review.json
+review/video_review.json
+```
+
+这些文件默认是 `auto=true` 和 `approved`，只表示 mock 流程自动通过。接入真实图片、
+真实视频和真实配音后，人工审核者可以直接修改这些 JSON，记录 rejected、pending
+和审核原因。
+
+`quality-check` 会解析 review JSON。只要任一审核项是 `pending` 或 `rejected`，
+完整质量检查就会失败，避免“有审核文件”被误认为“已经审核通过”。`approve-images --auto`
+只会批准真实存在的 raw 图片；缺失图片会记录为 `pending`，不会生成对应视频任务。
 
 ## 对话、配音与口型
 

@@ -67,3 +67,18 @@ def test_build_image_prompts_blocks_forbidden_positive_prompt(tmp_path):
     report = read_json(story_dir / "quality_reports" / "prompt_quality.json")
     assert report["ok"] is False
     assert report["issues"][0]["term"] == "明星脸"
+
+
+def test_build_image_prompts_allows_forbidden_terms_in_negative_prompt(tmp_path):
+    story_dir = tmp_path / "story"
+    story_dir.mkdir()
+    storyboard_path = story_dir / "02_storyboard.json"
+    write_json(storyboard_path, read_json(FIXTURES / "storyboard_sample.json"))
+
+    result = CliRunner().invoke(app, ["build-image-prompts", str(storyboard_path)])
+
+    assert result.exit_code == 0, result.output
+    prompts = read_json(story_dir / "03_image_prompts.json")
+    report = read_json(story_dir / "quality_reports" / "prompt_quality.json")
+    assert "明星脸" in prompts[0]["negative_prompt"]
+    assert report["ok"] is True
