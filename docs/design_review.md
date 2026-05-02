@@ -1,72 +1,59 @@
-# Design Review
+# 设计审查
 
-## Feasibility
+## 可行性
 
-The brief is feasible as a mock-first MVP. The safest first milestone is an
-offline pipeline that produces reviewable JSON at each stage, mock image/video
-artifacts, subtitles, metadata, and a final fallback media file.
+项目说明中的 MVP 可行。最稳妥的第一阶段是离线 mock 流水线：每一步都输出可审查
+JSON，同时生成 mock 图片、mock 视频、字幕、元数据和最终 fallback 成片文件。
 
-## Conservative Decisions
+## 保守取舍
 
-- Use `04_image_jobs.json` instead of `04_comfyui_jobs.json` so the job format
-  remains provider-neutral.
-- Let `approve-images --auto` create `05_video_jobs.json`, because video jobs
-  should reference approved images rather than raw outputs.
-- Keep ComfyUI, Seedance, OpenAI, and real TTS as dry-run or skeleton providers.
-- If FFmpeg is unavailable, `compose` writes `final/final_mock.txt` and returns a
-  successful command with a clear warning.
-- Use conda as the primary documented environment because later GPU and ComfyUI
-  work will benefit from environment isolation.
+- 使用 `04_image_jobs.json`，不使用 `04_comfyui_jobs.json`，让任务格式保持 provider 中立。
+- `approve-images --auto` 负责生成 `05_video_jobs.json`，因为视频任务应引用已审核图片。
+- ComfyUI、Seedance、OpenAI、真实 TTS 第一阶段只保留 dry-run 或 skeleton。
+- 如果没有 FFmpeg，`compose` 写出 `final/final_mock.txt`，并给出清楚 warning。
+- 环境文档以 conda 为主，因为后续 GPU、ComfyUI 和模型依赖更适合隔离环境。
+- 核心文档采用中文表达，便于成语故事创作、提示词审查和人工审核。
 
-## Dialogue, Voice, And Lip Sync
+## 对话、配音与口型
 
-Dialogue belongs in the script stage. Storyboard scenes assign each narration or
-dialogue cue to a scene with estimated timing, speaker, emotion, and mouth
-action. The first milestone records simple mouth intent only:
-`mouth_action=speaking_simple` and `lip_sync_required=false`.
+人物台词应在剧本阶段确定。分镜阶段负责把旁白或人物台词分配到镜头，并记录估算时间、
+speaker、emotion、mouth_action。第一阶段只记录简单口型意图：
+`mouth_action=speaking_simple`、`lip_sync_required=false`。
 
-Precise lip sync is deferred to later providers:
+精确口型同步延后到后续 provider：
 
-1. `VoiceProvider` creates audio.
-2. `AlignmentProvider` creates word, phoneme, or viseme timing.
-3. `LipSyncProvider` renders mouth-synced clips.
+1. `VoiceProvider` 生成音频。
+2. `AlignmentProvider` 生成 word、phoneme 或 viseme 时间轴。
+3. `LipSyncProvider` 渲染口型同步片段。
 
-The MVP should avoid long front-facing speaking shots and use narration-led
-storytelling with short character dialogue.
+MVP 应避免长时间正脸说话镜头，采用旁白驱动、短人物台词辅助的方式。
 
-## Risks
+## 风险
 
-- Real ComfyUI workflows may depend on local plugin and model versions.
-- Seedance task APIs and polling behavior must be isolated behind provider
-  contracts before real integration.
-- Exact mouth synchronization requires a separate alignment and lip-sync phase.
-- Model and asset licenses need human review before publication.
+- 真实 ComfyUI workflow 会受本地插件和模型版本影响。
+- Seedance 任务提交、轮询和失败状态必须封装在 provider 后面。
+- 精确口型同步需要单独的音频对齐和口型渲染阶段。
+- 模型和素材许可证必须在发布前人工审查。
 
-## Later Phases
+## 后续阶段
 
-1. Connect ComfyUI after local smoke tests.
-2. Add Seedance dry-run task polling, then real submission.
-3. Add TTS, audio alignment, and optional lip-sync provider.
-4. Add batch production only after the single-idiom workflow is stable.
+1. 通过本地 ComfyUI 冒烟测试后，再接真实图片 provider。
+2. 先实现 Seedance dry-run 任务记录，再接真实提交。
+3. 增加 TTS、音频对齐和可选口型同步 provider。
+4. 单成语流程稳定后，再增加批量生产能力。
 
-## Current Completion
+## 当前完成内容
 
-- Project structure, conda environment file, README, AGENTS, and project
-  management docs are present.
-- Pydantic schemas cover idiom profiles, scripts, storyboards, image jobs,
-  video jobs, speech cues, subtitles, and publish metadata.
-- Dialogue and voice text are generated at script stage, then assigned to
-  storyboard speech cues with estimated timing.
-- Mock image, video, subtitle, compose fallback, cover, and metadata steps run
-  without external services.
-- `04_image_jobs.json` is provider-neutral, and `05_video_jobs.json` is created
-  after image approval.
-- `build-image-prompts` writes a prompt quality report and blocks positive
-  prompts that contain forbidden terms.
+- 项目结构、conda 环境文件、README、AGENTS 和项目管理文档已建立。
+- Pydantic schema 覆盖成语资料、剧本、分镜、图片任务、视频任务、speech cue、字幕和发布元数据。
+- 对话和配音文本在剧本阶段生成，再分配到分镜 speech cue。
+- mock 图片、mock 视频、字幕、compose fallback、封面和元数据步骤均不依赖外部服务。
+- `04_image_jobs.json` 保持 provider 中立，`05_video_jobs.json` 在图片审核后生成。
+- `build-image-prompts` 会写出 prompt 质量报告，并阻断命中禁用词的正向提示词。
 
-## Unfinished Work
+## 未完成内容
 
-- Real ComfyUI API calls.
-- Real Seedance API calls.
-- Real TTS audio, audio alignment, and precise lip sync.
-- Batch production and publishing automation.
+- 真实 ComfyUI API 调用。
+- 真实 Seedance API 调用。
+- 真实 TTS 音频、音频对齐和精确口型同步。
+- 批量生产和发布自动化。

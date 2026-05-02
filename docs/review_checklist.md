@@ -1,30 +1,29 @@
-# Review Checklist
+# 审核清单
 
-## Script Review
+## 剧本审核
 
-- The idiom meaning is accurate.
-- The story is child-friendly and educational.
-- Dialogue is short and easy to voice.
-- Narration carries the story if mouth sync is unavailable.
+- 成语含义准确。
+- 故事适合儿童和青少年观看。
+- 人物台词短，适合配音。
+- 即使没有精确口型同步，旁白也能承载故事。
 
-## Image Review
+## 图片审核
 
-- Characters remain consistent.
-- Clothing colors and scene era are consistent.
-- No modern brands, logos, celebrity faces, or copyrighted characters appear.
-- No horror, gore, adult content, or unsafe visual content appears.
-- Images are usable as first frames for image-to-video generation.
+- 角色形象保持一致。
+- 服装颜色和时代背景保持一致。
+- 不出现现代品牌、logo、明星脸、公众人物肖像或具体版权角色。
+- 不出现恐怖、血腥、成人化或其他不适合儿童教育动画的内容。
+- 图片适合作为 image-to-video 首帧。
 
-## Video Review
+## 视频审核
 
-- Character identity remains stable.
-- Motion is gentle and natural.
-- No sudden identity changes, melting artifacts, or unstable camera motion.
-- Timing matches the intended narration and subtitle cues.
+- 角色身份保持稳定。
+- 动作温和自然。
+- 不出现身份突变、画面融化、镜头剧烈不稳等问题。
+- 镜头时长与旁白、字幕 cue 基本匹配。
 
-## Publishing Review
+## 发布审核
 
-- Metadata contains no API keys or local secrets.
-- Model and asset licenses are recorded before real publishing.
-- Final outputs are stored under `outputs/{idiom_slug}/`.
-
+- 元数据不包含 API key 或本地敏感信息。
+- 真实发布前，模型和素材许可证已经记录并审核。
+- 最终产物存放在 `outputs/{idiom_slug}/` 下。

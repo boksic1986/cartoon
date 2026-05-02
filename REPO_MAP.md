@@ -1,38 +1,38 @@
-# Repo Map
+# 仓库地图
 
-## Root
+## 根目录
 
-- `README.md`: install and usage guide.
-- `AGENTS.md`: rules for Codex agents and human contributors.
-- `PLANS.md`: project roadmap and current milestone.
-- `CURRENT_STATUS.md`: current execution status and verification commands.
-- `REPO_MAP.md`: high-level directory map.
-- `pyproject.toml`: Python package metadata and CLI entry point.
-- `environment.yml`: conda environment definition.
-- `outputs/`: generated local artifacts. This directory is produced by the CLI.
+- `README.md`：安装、运行和后续接入说明。
+- `AGENTS.md`：Codex Agent 与协作者规则。
+- `PLANS.md`：项目路线和当前阶段计划。
+- `CURRENT_STATUS.md`：当前执行状态和验证命令。
+- `REPO_MAP.md`：仓库目录地图。
+- `pyproject.toml`：Python 包元数据和 CLI 入口。
+- `environment.yml`：conda 环境定义。
+- `outputs/`：CLI 生成的本地产物，默认被 git 忽略。
 
-## Source
+## 源码
 
-- `src/idiom_video/schemas.py`: Pydantic contracts for all JSON artifacts.
-- `src/idiom_video/config.py`: environment-backed settings.
-- `src/idiom_video/cli.py`: Typer CLI.
-- `src/idiom_video/script_writer.py`: idiom profile to script.
-- `src/idiom_video/storyboard_writer.py`: script to storyboard.
-- `src/idiom_video/prompt_builder.py`: storyboard to prompts and image jobs.
-- `src/idiom_video/quality_rules.py`: validation and review gates.
-- `src/idiom_video/providers/`: mock and dry-run provider interfaces.
-- `src/idiom_video/media/`: subtitles, composition, cover, metadata.
-- `src/idiom_video/utils/`: path, JSON, logging, retry helpers.
+- `src/idiom_video/schemas.py`：所有 JSON 产物的 Pydantic 契约。
+- `src/idiom_video/config.py`：基于环境变量的配置。
+- `src/idiom_video/cli.py`：Typer CLI。
+- `src/idiom_video/script_writer.py`：成语资料生成剧本。
+- `src/idiom_video/storyboard_writer.py`：剧本生成分镜。
+- `src/idiom_video/prompt_builder.py`：分镜生成图片提示词和图片任务。
+- `src/idiom_video/quality_rules.py`：质量检查和审核规则。
+- `src/idiom_video/providers/`：mock 和 dry-run provider。
+- `src/idiom_video/media/`：字幕、合成、封面和元数据。
+- `src/idiom_video/utils/`：路径、JSON、日志、重试工具。
 
-## Data And Workflows
+## 数据与工作流
 
-- `data/idioms/`: source idiom profile JSON files.
-- `data/style/`: style bible, negative prompt, forbidden terms.
-- `data/models/`: model license manifest.
-- `workflows/comfyui/`: placeholder workflow references for later real ComfyUI work.
-- `docs/agent_skills.md`: multi-agent split, skill usage, and file permissions.
-- `outputs/{idiom_slug}/quality_reports/`: generated quality reports; ignored by git.
+- `data/idioms/`：成语资料 JSON。
+- `data/style/`：风格说明、负向提示词、禁用词。
+- `data/models/`：模型许可证 manifest。
+- `workflows/comfyui/`：后续真实 ComfyUI 工作流占位说明。
+- `docs/agent_skills.md`：多 Agent 分工、技能使用和目录权限。
+- `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 
-## Tests
+## 测试
 
-- `tests/`: unit and integration tests. Tests must remain offline and mock-only.
+- `tests/`：单元测试和集成测试。测试必须保持离线、mock-only。
