@@ -41,6 +41,8 @@
 - 真实发布前，模型和素材许可证已经记录并审核。
 - 最终产物存放在 `outputs/{idiom_slug}/` 下。
 - 如生成了 `review/review_packet.json`，每个审核项都应是 `approved`，且引用文件存在。
+- 如生成了 `quality_reports/real_image_preflight.json`，其 `ok` 应为 `true`，且
+  `next_step` 应为 `STOP_BEFORE_REAL_IMAGE_GENERATION`。
 - `quality_reports/full_quality.json` 为 `ok=true`。
 - `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务、
   配音任务、音频对齐、口型任务和发布元数据；缺失字段和未知字段都会阻断。
@@ -52,3 +54,17 @@
   已由人工确认或明确保留 mock 自动审核状态。
 - `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。
+
+## Phase 1.9 真实图片前门禁补充
+
+- `quality_reports/real_image_preflight.json` 应记录 `smoke_report_path`，且对应的
+  `quality_reports/comfyui_smoke_check.json` 文件应存在。
+- 如果 `real_image_preflight.json` 的 `ok=true`，则 `next_step` 必须是
+  `STOP_BEFORE_REAL_IMAGE_GENERATION`，并且仍需人工确认后才能调用本地 ComfyUI。
+- 若 preflight 通过后修改了 workflow 或模型 manifest，必须重新运行 `real-image-preflight`；
+  `quality-check` 应能发现这种后续改动并失败。
+- 如存在 ComfyUI dry-run 产物，`comfyui_dry_run/jobs.json` 不应为空，且 jobs 清单和每个镜头的
+  request preview 应进入 `review/review_packet.json` 的图片审核项。
+- 如存在 Seedance dry-run 产物，`seedance_dry_run/jobs.json` 不应为空，且 request preview 应进入视频审核项。
+- 任何 dry-run 产物生成或变更后，都应重新运行 `build-review-packet`，再进行 `quality-check` 或
+  `real-image-preflight`。

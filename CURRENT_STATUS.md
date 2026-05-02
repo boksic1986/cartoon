@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 1.8 人工审核包开发中。
+状态：Phase 1.9 真实图片生成前门禁开发中。
 
 ## Git
 
-- 分支：`codex/phase-1.8-review-packet`
+- 分支：`codex/phase-1.9-real-image-preflight`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`c46b9b1 feat: add seedance dry-run video jobs`
+- 已合并功能提交：`347f908 feat: add review packet artifacts`
 
 ## 环境
 
@@ -34,7 +34,7 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：63 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：67 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
@@ -46,6 +46,22 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 - Seedance dry-run 产物存在时，`quality-check outputs\shou-zhu-dai-tu` 通过。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe build-review-packet outputs\shou-zhu-dai-tu`：生成 `review/review_packet.json`。
 - 审核包产物存在时，`quality-check outputs\shou-zhu-dai-tu` 通过。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe real-image-preflight outputs\shou-zhu-dai-tu --workflow workflows\comfyui\text2image_sdxl.placeholder.json --manifest data\models\models_manifest.json`：按预期失败，提示 placeholder / manifest 仍未达到真实图片生成门槛。
+
+## 2026-05-02 Phase 1.9 加固状态
+
+- 当前分支：`codex/phase-1.9-real-image-preflight`。
+- 最新完整测试：`D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`，结果为 `75 passed in 4.90s`。
+- `run-all data\idioms\shou-zhu-dai-tu.json --providers mock` 已在默认 `outputs/shou-zhu-dai-tu/` 跑通。
+- 清理旧版 preflight 报告后，`quality-check outputs\shou-zhu-dai-tu` 已通过；旧报告失败原因是 schema 已新增
+  `smoke_report_path` 字段。
+- `generate-images --provider comfyui --dry-run` 和 `generate-videos --provider seedance --dry-run` 已生成 request preview，
+  未调用真实外部服务。
+- `build-review-packet outputs\shou-zhu-dai-tu` 会把 dry-run jobs 和 request preview 纳入审核包。
+- 若 dry-run 产物是在审核包之后生成，`quality-check` 和 `real-image-preflight` 会判定审核包过期，要求重新运行
+  `build-review-packet`。
+- `real-image-preflight outputs\shou-zhu-dai-tu --workflow workflows\comfyui\text2image_sdxl.placeholder.json --manifest data\models\models_manifest.json`
+  按预期失败，并写出 `quality_reports/comfyui_smoke_check.json` 与 `quality_reports/real_image_preflight.json`。
 
 ## 当前加固内容
 
@@ -68,3 +84,4 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 - 默认情况下，仍包含 `placeholder` 或 `REVIEW_REQUIRED` 的 ComfyUI 配置会被冒烟检查拦下。
 - Seedance 当前只支持 dry-run：写出 `seedance_dry_run/jobs.json` 和 request preview，不访问真实视频服务。
 - `build-review-packet` 会汇总剧本、图片、视频、配音和口型任务，生成可人工编辑的审核包。
+- `real-image-preflight` 会写出真实图片生成前门禁报告，通过时也只提示停在真实生成前，不调用 ComfyUI。

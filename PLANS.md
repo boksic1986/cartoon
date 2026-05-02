@@ -140,3 +140,40 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 1. 为审核包增加批量目录扫描，便于一次检查多个成语输出目录。
 2. 后续可用 Browser Use 做一个只读预览页或轻量本地表单，但仍以 JSON 作为权威产物。
 3. 真实图片/视频接入后，将人工审核结果写回 `review/review_packet.json` 和对应 review JSON。
+
+## Phase 1.9 真实图片生成前门禁
+
+已完成：
+
+1. 新增 `RealImagePreflightReport` 和 `RealImagePreflightIssue` schema。
+2. 新增 `real-image-preflight` CLI，用于汇总检查 prompt 质量、审核包、ComfyUI dry-run、workflow
+   和模型 manifest。
+3. 该命令只写出 `quality_reports/real_image_preflight.json`，不访问 ComfyUI，不提交真实图片任务。
+4. 当报告通过时，`next_step=STOP_BEFORE_REAL_IMAGE_GENERATION`，表示已经到达真实图片生成前停止线。
+5. `quality-check` 会在 preflight 报告存在时校验 schema 和 `ok` 状态。
+
+下一步建议：
+
+1. 停下来等待人工提供已审核真实 workflow、真实模型 manifest 和是否允许调用本地 ComfyUI 的确认。
+2. 用户确认后，再设计真实 ComfyUI provider：提交 prompt、轮询结果、保存图片和失败重试。
+3. 真实 provider 的测试仍必须使用 mock HTTP 服务，不能调用本机真实 ComfyUI。
+
+## Phase 1.9 加固补充
+
+已完成：
+
+1. `real-image-preflight` 会同时写出 `quality_reports/comfyui_smoke_check.json`，并在
+   `real_image_preflight.json` 中记录 `smoke_report_path`，方便人工追溯门禁失败原因。
+2. `build-review-packet` 会在存在 ComfyUI / Seedance dry-run 产物时，把 jobs 清单和每个镜头的
+   request preview 路径纳入审核包，避免只审核 mock 图片而漏看真实 provider 请求预览。
+3. `quality-check` 会阻断空的 `comfyui_dry_run/jobs.json` 和空的 `seedance_dry_run/jobs.json`。
+4. `quality-check` 和 `real-image-preflight` 会发现 dry-run 产物生成后未重新生成审核包的情况，提示先更新
+   `review/review_packet.json`。
+5. 对已经通过的 `real_image_preflight.json`，`quality-check` 会按报告里的 workflow 和 manifest
+   重新执行离线 preflight，发现后续改动会失败并提示重新运行门禁。
+
+停止线：
+
+1. 当前阶段只推进到真实图片生成前门禁，不调用本地 ComfyUI，不提交真实图片任务。
+2. 进入真实图片生成前，需要人工提供已审核 workflow、已审核模型 manifest、ComfyUI 前端手动冒烟结果，
+   并明确授权调用本地 ComfyUI。

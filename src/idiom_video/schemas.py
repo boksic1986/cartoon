@@ -228,6 +228,23 @@ class ComfyUISmokeCheckReport(StrictSchemaModel):
     issues: list[ComfyUISmokeCheckIssue] = Field(default_factory=list)
 
 
+class RealImagePreflightIssue(StrictSchemaModel):
+    message: str
+    path: str | None = None
+
+
+class RealImagePreflightReport(StrictSchemaModel):
+    ok: bool
+    story_dir: str
+    workflow_path: str
+    manifest_path: str
+    smoke_report_path: str
+    checks: dict[str, str]
+    issues: list[RealImagePreflightIssue] = Field(default_factory=list)
+    next_step: Literal["STOP_BEFORE_REAL_IMAGE_GENERATION", "BLOCKED"]
+    stop_reason: str
+
+
 class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str
