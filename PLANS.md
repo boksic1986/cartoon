@@ -56,4 +56,20 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
 1. 为 `quality-check` 增加可选的批量目录扫描，便于后续批量成语生产。
 2. 为真实图片和真实视频接入前的人工审核 UI 设计 JSON 编辑约束。
-3. 在接入 TTS 前补充音频和口型 provider 的 schema 草案。
+
+## Phase 1.4 配音、音频对齐和口型任务接口
+
+已完成：
+
+1. 从 `02_storyboard.json` 的 `speech_cues` 生成 `06_voice_jobs.json`。
+2. `generate-audio --provider mock` 写出可审查的 mock 音频文本资产和
+   `audio/voice_assets.json`，不调用真实 TTS。
+3. 生成 `07_alignment.json`，用 cue 级时间轴为后续 word、phoneme 或 viseme 对齐留接口。
+4. 生成 `08_lipsync_jobs.json`，默认 `enabled=false`，只记录口型任务，不做真实口型渲染。
+5. `run-all` 和 `quality-check` 已接入 voice、alignment、lip-sync 产物。
+
+下一步建议：
+
+1. 为真实 TTS provider 设计 voice id、语速、音色和授权记录字段。
+2. 为音频对齐 provider 设计 word、phoneme、viseme 三种精度的可选输出。
+3. 在真实图片风格稳定后，再评估是否接入精确口型同步渲染。

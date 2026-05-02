@@ -14,6 +14,10 @@ def write_publish_metadata(story_dir: str | Path, storyboard: Storyboard, moral:
         "image_prompts": "03_image_prompts.json",
         "image_jobs": "04_image_jobs.json",
         "video_jobs": "05_video_jobs.json",
+        "voice_jobs": "06_voice_jobs.json",
+        "voice_assets": "audio/voice_assets.json",
+        "alignment": "07_alignment.json",
+        "lipsync_jobs": "08_lipsync_jobs.json",
         "subtitles": "subtitles/final.srt",
     }
     metadata = PublishMetadata(

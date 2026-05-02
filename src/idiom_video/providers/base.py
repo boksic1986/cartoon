@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from idiom_video.schemas import ImageAsset, ImageGenerationJob, VideoClip, VideoGenerationJob
+from idiom_video.schemas import ImageAsset, ImageGenerationJob, VideoClip, VideoGenerationJob, VoiceAsset, VoiceJob
 
 
 class ImageProvider(Protocol):
@@ -16,5 +16,5 @@ class VideoProvider(Protocol):
 
 
 class VoiceProvider(Protocol):
-    def synthesize(self, text: str, output_path: str) -> str:
+    def synthesize(self, job: VoiceJob) -> VoiceAsset:
         ...

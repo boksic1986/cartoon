@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from idiom_video.schemas import IdiomProfile, Storyboard, StoryboardScene
+from idiom_video.schemas import AlignmentCue, IdiomProfile, LipSyncJob, Storyboard, StoryboardScene, VoiceJob
 from idiom_video.utils.json_io import read_json
 
 
@@ -50,3 +50,46 @@ def test_speech_cue_keeps_lip_sync_disabled_by_default():
     assert cue.lip_sync_required is False
     assert cue.mouth_action == "none"
 
+
+def test_voice_alignment_and_lipsync_schemas_are_strict():
+    voice_job = VoiceJob(
+        job_id="voice_scene_01_narration",
+        cue_id="scene_01_narration",
+        scene_id="scene_01",
+        speaker_id="narrator",
+        speaker_name="旁白",
+        text="很久以前，有个农夫叫阿木。",
+        emotion="warm",
+        start_seconds=0,
+        end_seconds=3,
+        output_path="outputs/story/audio/scene_01_narration.txt",
+    )
+    alignment = AlignmentCue(
+        cue_id=voice_job.cue_id,
+        scene_id=voice_job.scene_id,
+        speaker_id=voice_job.speaker_id,
+        text=voice_job.text,
+        audio_path=voice_job.output_path,
+        start_seconds=voice_job.start_seconds,
+        end_seconds=voice_job.end_seconds,
+        tokens=[],
+    )
+    lipsync_job = LipSyncJob(
+        job_id="lipsync_scene_01_narration",
+        cue_id=voice_job.cue_id,
+        scene_id=voice_job.scene_id,
+        audio_path=voice_job.output_path,
+        alignment_path="outputs/story/07_alignment.json",
+        enabled=False,
+        reason="MVP 旁白不需要精确口型同步",
+        output_path="outputs/story/lipsync/scene_01_narration.txt",
+    )
+
+    assert voice_job.provider == "mock"
+    assert alignment.duration_seconds == 3
+    assert lipsync_job.enabled is False
+
+    payload = voice_job.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        VoiceJob.model_validate(payload)

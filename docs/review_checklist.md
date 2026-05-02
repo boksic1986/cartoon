@@ -22,13 +22,21 @@
 - 不出现身份突变、画面融化、镜头剧烈不稳等问题。
 - 镜头时长与旁白、字幕 cue 基本匹配。
 
+## 配音与口型审核
+
+- `06_voice_jobs.json` 中每个 speech cue 都有对应配音任务。
+- mock 音频资产只用于本地审核，不代表真实 TTS 结果。
+- `07_alignment.json` 的 cue 时间与分镜 speech cue 基本一致。
+- `08_lipsync_jobs.json` 当前默认 `enabled=false`，真实口型同步接入前不应误认为已经渲染。
+
 ## 发布审核
 
 - 元数据不包含 API key 或本地敏感信息。
 - 真实发布前，模型和素材许可证已经记录并审核。
 - 最终产物存放在 `outputs/{idiom_slug}/` 下。
 - `quality_reports/full_quality.json` 为 `ok=true`。
-- `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务和发布元数据；缺失字段和未知字段都会阻断。
+- `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务、
+  配音任务、音频对齐、口型任务和发布元数据；缺失字段和未知字段都会阻断。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

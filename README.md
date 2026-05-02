@@ -55,6 +55,10 @@ outputs/shou-zhu-dai-tu/
 03_image_prompts.json
 04_image_jobs.json
 05_video_jobs.json
+06_voice_jobs.json
+audio/voice_assets.json
+07_alignment.json
+08_lipsync_jobs.json
 quality_reports/prompt_quality.json
 quality_reports/full_quality.json
 review/script_review.json
@@ -75,6 +79,9 @@ idiom-video build-image-prompts outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider mock
 idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
+idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
+idiom-video generate-audio outputs/shou-zhu-dai-tu/06_voice_jobs.json --provider mock
+idiom-video build-lipsync-jobs outputs/shou-zhu-dai-tu/07_alignment.json
 idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
@@ -88,7 +95,8 @@ idiom-video quality-check outputs/shou-zhu-dai-tu/
 `quality-check` 会检查完整产物链路，并写出
 `quality_reports/full_quality.json`。当前检查包括必需产物、核心 JSON schema
 （`01_script.json`、`02_storyboard.json`、`03_image_prompts.json`、`04_image_jobs.json`、
-`05_video_jobs.json`、`final/metadata.json`）、prompt 质量报告、分镜时长、已审核图片是否存在、
+`05_video_jobs.json`、`06_voice_jobs.json`、`07_alignment.json`、`08_lipsync_jobs.json`、
+`final/metadata.json`）、prompt 质量报告、分镜时长、已审核图片和 mock 音频是否存在、
 review 记录、模型 manifest 字段。核心 schema 会拒绝缺失字段和未知字段，避免人工编辑 JSON
 时把拼写错误或临时字段带入后续流程。
 
@@ -118,6 +126,11 @@ review/video_review.json
 
 真实 TTS、音频对齐和精确口型同步后续再接入。MVP 阶段推荐采用旁白驱动、人物短句
 辅助的叙事方式，减少正脸长句说话镜头，让 mock 流程更稳定。
+
+Phase 1.4 会把 `speech_cues` 转成 `06_voice_jobs.json`，`generate-audio --provider mock`
+会写出可审查的 mock 音频文本资产和 `07_alignment.json`。`build-lipsync-jobs` 会写出
+`08_lipsync_jobs.json` 和占位结果，默认 `enabled=false`，表示当前只记录口型任务，不做
+真实口型渲染。
 
 ## 后续接入 ComfyUI
 

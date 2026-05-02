@@ -188,6 +188,83 @@ class VideoClip(StrictSchemaModel):
     provider: str = "mock"
 
 
+class VoiceJob(StrictSchemaModel):
+    job_id: str
+    cue_id: str
+    scene_id: str
+    speaker_id: str
+    speaker_name: str
+    text: str
+    emotion: str = "neutral"
+    start_seconds: float = Field(ge=0)
+    end_seconds: float = Field(gt=0)
+    output_path: str
+    provider: str = "mock"
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> VoiceJob:
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("voice job end time must be after start time")
+        return self
+
+
+class VoiceAsset(StrictSchemaModel):
+    asset_id: str
+    cue_id: str
+    scene_id: str
+    path: str
+    metadata_path: str
+    duration_seconds: float = Field(gt=0)
+    provider: str = "mock"
+
+
+class AlignmentToken(StrictSchemaModel):
+    index: int = Field(ge=1)
+    text: str
+    start_seconds: float = Field(ge=0)
+    end_seconds: float = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> AlignmentToken:
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("alignment token end time must be after start time")
+        return self
+
+
+class AlignmentCue(StrictSchemaModel):
+    cue_id: str
+    scene_id: str
+    speaker_id: str
+    text: str
+    audio_path: str
+    start_seconds: float = Field(ge=0)
+    end_seconds: float = Field(gt=0)
+    tokens: list[AlignmentToken]
+    provider: str = "mock"
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> AlignmentCue:
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("alignment cue end time must be after start time")
+        return self
+
+    @property
+    def duration_seconds(self) -> float:
+        return self.end_seconds - self.start_seconds
+
+
+class LipSyncJob(StrictSchemaModel):
+    job_id: str
+    cue_id: str
+    scene_id: str
+    audio_path: str
+    alignment_path: str
+    enabled: bool = False
+    reason: str
+    output_path: str
+    provider: str = "mock"
+
+
 class SubtitleCue(StrictSchemaModel):
     index: int = Field(ge=1)
     start_seconds: float = Field(ge=0)
