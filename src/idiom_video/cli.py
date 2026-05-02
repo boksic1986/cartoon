@@ -12,12 +12,14 @@ from idiom_video.media.ffmpeg_compose import compose_mock_final
 from idiom_video.media.metadata_writer import write_publish_metadata
 from idiom_video.media.subtitle import storyboard_to_srt
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
+from idiom_video.providers.image_comfyui import ComfyUIImageProvider
 from idiom_video.providers.image_mock import ImageMockProvider
 from idiom_video.providers.tts_mock import TTSMockProvider
 from idiom_video.providers.video_mock import VideoMockProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
 from idiom_video.schemas import (
     AlignmentCue,
+    ComfyUIDryRunJob,
     IdiomProfile,
     ImageGenerationJob,
     ImagePrompt,
@@ -63,6 +65,10 @@ def _load_forbidden_terms() -> list[str]:
         return ["明星脸", "公众人物", "具体版权角色", "在世艺术家风格", "品牌 logo"]
     data = read_json(terms_path)
     return list(data.get("terms", []))
+
+
+def _default_comfyui_workflow_path() -> Path:
+    return project_root(Path(__file__).resolve()) / "workflows" / "comfyui" / "text2image_sdxl.placeholder.json"
 
 
 def _write_prompt_quality_report(story_dir: Path, prompts: list[ImagePrompt]) -> QualityResult:
@@ -204,6 +210,19 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         "08_lipsync_jobs.json",
         lambda data: [LipSyncJob.model_validate(item) for item in data],
     )
+    dry_run_jobs_path = story_dir / "comfyui_dry_run" / "jobs.json"
+    if dry_run_jobs_path.exists():
+        dry_run_jobs = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "comfyui_dry_run_schema",
+            "comfyui_dry_run/jobs.json",
+            lambda data: [ComfyUIDryRunJob.model_validate(item) for item in data],
+        )
+    else:
+        dry_run_jobs = None
+        checks["comfyui_dry_run_schema"] = "skipped"
     _validate_json_artifact(
         story_dir,
         checks,
@@ -273,6 +292,19 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                 lipsync_output_missing = True
                 issues.append(_quality_issue("lipsync output missing", job.output_path))
     checks["lipsync_outputs"] = "failed" if lipsync_output_missing else "passed"
+
+    comfyui_dry_run_missing = False
+    if dry_run_jobs is None:
+        checks["comfyui_dry_run_files"] = "skipped"
+    else:
+        for job in dry_run_jobs:
+            if not Path(job.workflow_path).exists():
+                comfyui_dry_run_missing = True
+                issues.append(_quality_issue("ComfyUI workflow missing", job.workflow_path))
+            if not Path(job.request_preview_path).exists():
+                comfyui_dry_run_missing = True
+                issues.append(_quality_issue("ComfyUI dry-run request preview missing", job.request_preview_path))
+        checks["comfyui_dry_run_files"] = "failed" if comfyui_dry_run_missing else "passed"
 
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
@@ -382,9 +414,12 @@ app.command(name="build-image-prompts")(build_image_prompts_command)
 
 
 @app.command()
-def generate_images(image_prompts_path: Path, provider: str = typer.Option("mock", "--provider")) -> None:
-    if provider != "mock":
-        raise typer.BadParameter("first milestone only supports --provider mock")
+def generate_images(
+    image_prompts_path: Path,
+    provider: str = typer.Option("mock", "--provider"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    workflow: Path | None = typer.Option(None, "--workflow"),
+) -> None:
     prompts = [ImagePrompt.model_validate(item) for item in read_json(image_prompts_path)]
     jobs_path = image_prompts_path.parent / "04_image_jobs.json"
     if jobs_path.exists():
@@ -392,10 +427,31 @@ def generate_images(image_prompts_path: Path, provider: str = typer.Option("mock
     else:
         jobs = build_image_jobs(prompts, image_prompts_path.parent)
         write_json(jobs_path, jobs)
-    provider_impl = ImageMockProvider()
-    assets = [provider_impl.generate(job) for job in jobs]
+    if provider == "mock":
+        if dry_run:
+            raise typer.BadParameter("--dry-run is only supported for --provider comfyui")
+        provider_impl = ImageMockProvider()
+        assets = [provider_impl.generate(job) for job in jobs]
+    elif provider == "comfyui":
+        if not dry_run:
+            raise typer.BadParameter("real ComfyUI generation is deferred; use --dry-run")
+        workflow_path = workflow or _default_comfyui_workflow_path()
+        provider_impl = ComfyUIImageProvider(workflow_path=workflow_path, dry_run=True)
+        comfyui_jobs: list[ComfyUIDryRunJob] = []
+        assets = []
+        for job in jobs:
+            comfyui_job = job.model_copy(update={"provider": "comfyui"})
+            asset = provider_impl.generate(comfyui_job)
+            assets.append(asset)
+            comfyui_jobs.append(ComfyUIDryRunJob.model_validate(read_json(asset.path)))
+        write_json(image_prompts_path.parent / "comfyui_dry_run" / "jobs.json", comfyui_jobs)
+    else:
+        raise typer.BadParameter("supported image providers: mock, comfyui")
     write_json(image_prompts_path.parent / "images_raw" / "assets.json", assets)
-    info(f"generated {len(assets)} mock images")
+    if provider == "comfyui":
+        info(f"generated {len(assets)} ComfyUI dry-run image jobs")
+    else:
+        info(f"generated {len(assets)} mock images")
 
 
 @app.command()
@@ -551,7 +607,7 @@ def run_all(idiom_path: Path, providers: str = typer.Option("mock", "--providers
     script_path = _write_script(idiom_path)
     storyboard_path = _write_storyboard(script_path)
     prompts_path, _jobs_path = _write_image_prompts(storyboard_path)
-    generate_images(prompts_path, provider="mock")
+    generate_images(prompts_path, provider="mock", dry_run=False, workflow=None)
     approve_images(prompts_path.parent / "images_raw", auto=True)
     generate_videos(prompts_path.parent / "05_video_jobs.json", provider="mock")
     voice_jobs_path = _write_voice_jobs(storyboard_path)

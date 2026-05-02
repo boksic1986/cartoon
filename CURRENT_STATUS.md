@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 1.4 配音、音频对齐和口型任务接口开发中。
+状态：Phase 1.5 ComfyUI 图片接入准备层开发中。
 
 ## Git
 
-- 分支：`codex/phase-1.4-voice-lipsync`
+- 分支：`codex/phase-1.5-comfyui-dry-run`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`846e744 Merge pull request #2 from boksic1986/codex/full-artifact-schema-check`
+- 已合并功能提交：`913382b Merge pull request #3 from boksic1986/codex/phase-1.4-voice-lipsync`
 
 ## 环境
 
@@ -34,12 +34,13 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：43 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：50 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
 - `outputs/shou-zhu-dai-tu/quality_reports/full_quality.json`：`ok=true`，无问题。
 - `outputs/shou-zhu-dai-tu/audio/voice_assets.json`：生成 7 条 mock 配音资产记录。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe generate-images outputs\shou-zhu-dai-tu\03_image_prompts.json --provider comfyui --dry-run --workflow workflows\comfyui\text2image_sdxl.placeholder.json`：生成 6 条 ComfyUI 请求预览 JSON，不调用真实服务。
 
 ## 当前加固内容
 
@@ -56,3 +57,4 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 - `run-all` 会生成 `06_voice_jobs.json`、`audio/voice_assets.json`、`07_alignment.json` 和
   `08_lipsync_jobs.json`。
 - 当前配音和口型同步仍是 mock-only：生成文本资产和任务记录，不调用真实 TTS 或口型渲染服务。
+- ComfyUI 当前只支持 dry-run：写出 `comfyui_dry_run/jobs.json` 和 request preview，不访问本地 ComfyUI。

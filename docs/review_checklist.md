@@ -14,6 +14,8 @@
 - 不出现现代品牌、logo、明星脸、公众人物肖像或具体版权角色。
 - 不出现恐怖、血腥、成人化或其他不适合儿童教育动画的内容。
 - 图片适合作为 image-to-video 首帧。
+- ComfyUI dry-run 只表示请求预览已生成，不代表真实图片已生成或已审核。
+- 使用 ComfyUI dry-run 时，`comfyui_dry_run/jobs.json` 和每个 request preview JSON 都应可人工审查。
 
 ## 视频审核
 
@@ -37,6 +39,7 @@
 - `quality_reports/full_quality.json` 为 `ok=true`。
 - `quality-check` 已通过核心 JSON schema 校验：剧本、分镜、图片提示词、图片任务、视频任务、
   配音任务、音频对齐、口型任务和发布元数据；缺失字段和未知字段都会阻断。
+- 如存在 ComfyUI dry-run 产物，`quality-check` 已确认 workflow 路径和 request preview 文件存在。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - review item 不应存在 `pending` 或 `rejected`，除非当前阶段明确暂停发布。

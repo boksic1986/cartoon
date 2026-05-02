@@ -3,7 +3,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from idiom_video.schemas import AlignmentCue, IdiomProfile, LipSyncJob, Storyboard, StoryboardScene, VoiceJob
+from idiom_video.schemas import (
+    AlignmentCue,
+    ComfyUIDryRunJob,
+    IdiomProfile,
+    LipSyncJob,
+    Storyboard,
+    StoryboardScene,
+    VoiceJob,
+)
 from idiom_video.utils.json_io import read_json
 
 
@@ -93,3 +101,27 @@ def test_voice_alignment_and_lipsync_schemas_are_strict():
     payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         VoiceJob.model_validate(payload)
+
+
+def test_comfyui_dry_run_job_schema_is_strict():
+    job = ComfyUIDryRunJob(
+        dry_run_id="comfyui_image_scene_01",
+        source_job_id="image_scene_01",
+        scene_id="scene_01",
+        workflow_path="workflows/comfyui/text2image_sdxl.placeholder.json",
+        prompt="原创中国风儿童绘本动画",
+        negative_prompt="no logo",
+        seed=123,
+        width=768,
+        height=1344,
+        intended_output_path="outputs/story/images_raw/scene_01.png",
+        request_preview_path="outputs/story/comfyui_dry_run/scene_01.json",
+    )
+
+    assert job.provider == "comfyui"
+    assert job.dry_run is True
+
+    payload = job.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        ComfyUIDryRunJob.model_validate(payload)
