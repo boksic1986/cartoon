@@ -73,3 +73,19 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 1. 为真实 TTS provider 设计 voice id、语速、音色和授权记录字段。
 2. 为音频对齐 provider 设计 word、phoneme、viseme 三种精度的可选输出。
 3. 在真实图片风格稳定后，再评估是否接入精确口型同步渲染。
+
+## Phase 1.5 ComfyUI 图片接入准备层
+
+已完成：
+
+1. 新增 `ComfyUIDryRunJob` schema，用于记录 ComfyUI 请求预览。
+2. `generate-images --provider comfyui --dry-run` 会校验 workflow 路径，并写出
+   `comfyui_dry_run/jobs.json` 和每个镜头的 request preview JSON。
+3. dry-run provider 不访问 ComfyUI 服务，不生成真实图片，不需要 API key。
+4. `quality-check` 会在 dry-run 产物存在时校验 dry-run schema、workflow 路径和 request preview 文件。
+
+下一步建议：
+
+1. 在本地 ComfyUI 手动跑通 placeholder 替换后的真实 workflow。
+2. 在 `data/models/models_manifest.json` 记录真实图片模型、插件和许可证。
+3. 冒烟测试稳定后，再实现真实 ComfyUI prompt 提交和结果轮询。

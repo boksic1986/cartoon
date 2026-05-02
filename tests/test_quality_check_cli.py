@@ -184,3 +184,62 @@ def test_quality_check_fails_when_lipsync_output_is_missing(tmp_path, monkeypatc
     report = read_json(story_dir / "quality_reports" / "full_quality.json")
     assert report["checks"]["lipsync_outputs"] == "failed"
     assert any("lipsync output missing" in issue["message"] for issue in report["issues"])
+
+
+def test_quality_check_validates_comfyui_dry_run_jobs_when_present(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    commands = [
+        [
+            "generate-images",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "03_image_prompts.json"),
+            "--provider",
+            "comfyui",
+            "--dry-run",
+            "--workflow",
+            str(Path("workflows") / "comfyui" / "text2image_sdxl.placeholder.json"),
+        ],
+    ]
+    for command in commands:
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, f"{command}: {result.output}"
+
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code == 0, result.output
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["comfyui_dry_run_schema"] == "passed"
+    assert report["checks"]["comfyui_dry_run_files"] == "passed"
+
+
+def test_quality_check_fails_when_comfyui_dry_run_preview_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    run = runner.invoke(app, ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"])
+    assert run.exit_code == 0, run.output
+    dry_run = runner.invoke(
+        app,
+        [
+            "generate-images",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "03_image_prompts.json"),
+            "--provider",
+            "comfyui",
+            "--dry-run",
+            "--workflow",
+            str(Path("workflows") / "comfyui" / "text2image_sdxl.placeholder.json"),
+        ],
+    )
+    assert dry_run.exit_code == 0, dry_run.output
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    dry_run_jobs = read_json(story_dir / "comfyui_dry_run" / "jobs.json")
+    Path(dry_run_jobs[0]["request_preview_path"]).unlink()
+
+    result = runner.invoke(app, ["quality-check", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "full_quality.json")
+    assert report["checks"]["comfyui_dry_run_files"] == "failed"
+    assert any("dry-run request preview missing" in issue["message"] for issue in report["issues"])

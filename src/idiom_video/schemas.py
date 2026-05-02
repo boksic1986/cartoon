@@ -170,6 +170,22 @@ class ImageAsset(StrictSchemaModel):
     height: int = Field(gt=0)
 
 
+class ComfyUIDryRunJob(StrictSchemaModel):
+    dry_run_id: str
+    source_job_id: str
+    scene_id: str
+    workflow_path: str
+    prompt: str
+    negative_prompt: str
+    seed: int = Field(ge=0)
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    intended_output_path: str
+    request_preview_path: str
+    provider: str = "comfyui"
+    dry_run: bool = True
+
+
 class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str

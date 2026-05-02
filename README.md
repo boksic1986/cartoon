@@ -77,6 +77,7 @@ idiom-video generate-script data/idioms/shou-zhu-dai-tu.json
 idiom-video generate-storyboard outputs/shou-zhu-dai-tu/01_script.json
 idiom-video build-image-prompts outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider mock
+idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider comfyui --dry-run --workflow workflows/comfyui/text2image_sdxl.placeholder.json
 idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
@@ -99,6 +100,8 @@ idiom-video quality-check outputs/shou-zhu-dai-tu/
 `final/metadata.json`）、prompt 质量报告、分镜时长、已审核图片和 mock 音频是否存在、
 review 记录、模型 manifest 字段。核心 schema 会拒绝缺失字段和未知字段，避免人工编辑 JSON
 时把拼写错误或临时字段带入后续流程。
+如果存在 `comfyui_dry_run/jobs.json`，`quality-check` 也会校验 ComfyUI dry-run 任务结构、
+workflow 路径和每个 request preview 文件是否存在。
 
 ## 审核记录
 
@@ -134,10 +137,23 @@ Phase 1.4 会把 `speech_cues` 转成 `06_voice_jobs.json`，`generate-audio --p
 
 ## 后续接入 ComfyUI
 
-第一阶段的 ComfyUI provider 只是 dry-run skeleton。真实接入前，需要先在本地单独
-完成 ComfyUI 冒烟测试，再把 `workflows/comfyui/` 里的 placeholder workflow
-替换为已审核的本地 workflow。模型名称、来源和许可证必须记录在
-`data/models/models_manifest.json`。
+第一阶段的 ComfyUI provider 只支持 dry-run，不会访问本地 ComfyUI 服务，也不会生成真实图片。
+可以先用下面命令检查 prompt、图片任务和 workflow 路径是否能组成可审查请求：
+
+```powershell
+idiom-video generate-images outputs/shou-zhu-dai-tu/03_image_prompts.json --provider comfyui --dry-run --workflow workflows/comfyui/text2image_sdxl.placeholder.json
+```
+
+该命令会写出：
+
+```txt
+outputs/shou-zhu-dai-tu/comfyui_dry_run/jobs.json
+outputs/shou-zhu-dai-tu/images_raw/*.comfyui_dry_run.json
+```
+
+这些 JSON 只用于人工审核请求内容。真实接入前，需要先在本地单独完成 ComfyUI 冒烟测试，再把
+`workflows/comfyui/` 里的 placeholder workflow 替换为已审核的本地 workflow。模型名称、来源和许可证
+必须记录在 `data/models/models_manifest.json`。
 
 ## 后续接入 Seedance
 

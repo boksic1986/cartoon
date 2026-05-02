@@ -89,3 +89,35 @@ def test_build_image_prompts_allows_forbidden_terms_in_negative_prompt(tmp_path)
     report = read_json(story_dir / "quality_reports" / "prompt_quality.json")
     assert "明星脸" in prompts[0]["negative_prompt"]
     assert report["ok"] is True
+
+
+def test_generate_images_comfyui_dry_run_writes_reviewable_jobs(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    storyboard_path = tmp_path / "outputs" / "shou-zhu-dai-tu" / "02_storyboard.json"
+    workflow_path = Path("workflows") / "comfyui" / "text2image_sdxl.placeholder.json"
+    commands = [
+        ["generate-script", str(FIXTURES / "idiom_sample.json")],
+        ["generate-storyboard", str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "01_script.json")],
+        ["build-image-prompts", str(storyboard_path)],
+        [
+            "generate-images",
+            str(tmp_path / "outputs" / "shou-zhu-dai-tu" / "03_image_prompts.json"),
+            "--provider",
+            "comfyui",
+            "--dry-run",
+            "--workflow",
+            str(workflow_path),
+        ],
+    ]
+
+    for command in commands:
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, f"{command}: {result.output}"
+
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    assets = read_json(story_dir / "images_raw" / "assets.json")
+    dry_run_jobs = read_json(story_dir / "comfyui_dry_run" / "jobs.json")
+    assert assets[0]["provider"] == "comfyui"
+    assert dry_run_jobs[0]["dry_run"] is True
+    assert Path(assets[0]["path"]).exists()
