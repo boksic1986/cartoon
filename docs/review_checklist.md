@@ -14,6 +14,8 @@
 - 不出现现代品牌、logo、明星脸、公众人物肖像或具体版权角色。
 - 不出现恐怖、血腥、成人化或其他不适合儿童教育动画的内容。
 - 图片适合作为 image-to-video 首帧。
+- 连续镜头中的关键背景锚点保持一致：房子位置、田间小径走向、树桩位置、田垄方向和远山轮廓不应明显跳变。
+- 如果故事通过时间流逝表达后果，作物、树叶和远山色调应随季节渐进变化，而不是突然枯萎或突然换景。
 - ComfyUI dry-run 只表示请求预览已生成，不代表真实图片已生成或已审核。
 - 使用 ComfyUI dry-run 时，`comfyui_dry_run/jobs.json` 和每个 request preview JSON 都应可人工审查。
 - 真实 ComfyUI provider 开发前，`quality_reports/comfyui_smoke_check.json` 应为 `ok=true`。
@@ -41,6 +43,9 @@
 - 真实发布前，模型和素材许可证已经记录并审核。
 - 最终产物存放在 `outputs/{idiom_slug}/` 下。
 - 如生成了 `review/review_packet.json`，每个审核项都应是 `approved`，且引用文件存在。
+- 如果使用内置图像生成预览作为当前首帧输入，应先运行
+  `register-preview-images <preview_dir> --approved`，确认 `review/image_review.json` 为 `auto=false`，
+  并抽查 `images_approved` 与预览目录对应 PNG 一致。
 - 如生成了 `quality_reports/real_image_preflight.json`，其 `ok` 应为 `true`，且
   `next_step` 应为 `STOP_BEFORE_REAL_IMAGE_GENERATION`。
 - `quality_reports/full_quality.json` 为 `ok=true`。

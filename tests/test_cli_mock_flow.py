@@ -147,3 +147,35 @@ def test_generate_videos_seedance_dry_run_writes_reviewable_jobs(tmp_path, monke
     assert clips[0]["provider"] == "seedance"
     assert dry_run_jobs[0]["dry_run"] is True
     assert Path(clips[0]["path"]).exists()
+
+
+def test_register_preview_images_writes_approved_assets_and_video_jobs(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    runner = CliRunner()
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+
+    for command in [
+        ["generate-script", str(FIXTURES / "idiom_sample.json")],
+        ["generate-storyboard", str(story_dir / "01_script.json")],
+    ]:
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, f"{command}: {result.output}"
+
+    storyboard = read_json(story_dir / "02_storyboard.json")
+    preview_dir = story_dir / "real_images_preview_comedy_10"
+    preview_dir.mkdir(parents=True)
+    for scene in storyboard["scenes"]:
+        (preview_dir / f"{scene['scene_id']}.png").write_bytes(f"preview {scene['scene_id']}".encode())
+
+    result = runner.invoke(app, ["register-preview-images", str(preview_dir), "--approved"])
+
+    assert result.exit_code == 0, result.output
+    video_jobs = read_json(story_dir / "05_video_jobs.json")
+    image_review = read_json(story_dir / "review" / "image_review.json")
+    assert len(video_jobs) == len(storyboard["scenes"])
+    assert video_jobs[0]["image_path"].endswith("images_approved/scene_01.png")
+    assert (story_dir / "images_raw" / "scene_01.png").read_bytes() == b"preview scene_01"
+    assert (story_dir / "images_approved" / "scene_01.png").read_bytes() == b"preview scene_01"
+    assert image_review["auto"] is False
+    assert image_review["summary"]["approved"] == len(storyboard["scenes"])
+    assert "人工认可的预览图" in image_review["items"][0]["notes"]

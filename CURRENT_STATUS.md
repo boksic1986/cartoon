@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 1.9 真实图片生成前门禁开发中。
+状态：Phase 2.1 守株待兔 10 镜头视觉方案收束中。
 
 ## Git
 
-- 分支：`codex/phase-1.9-real-image-preflight`
+- 分支：`codex/phase-2-shou-zhu-comedy-10frames`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`347f908 feat: add review packet artifacts`
+- 已合并功能提交：`011496a Merge pull request #8 from boksic1986/codex/phase-1.9-real-image-preflight`
 
 ## 环境
 
@@ -34,7 +34,7 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：67 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：85 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
@@ -85,3 +85,19 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 - Seedance 当前只支持 dry-run：写出 `seedance_dry_run/jobs.json` 和 request preview，不访问真实视频服务。
 - `build-review-packet` 会汇总剧本、图片、视频、配音和口型任务，生成可人工编辑的审核包。
 - `real-image-preflight` 会写出真实图片生成前门禁报告，通过时也只提示停在真实生成前，不调用 ComfyUI。
+
+## 2026-05-03 Phase 2.1 守株待兔视觉方案
+
+- 当前分支：`codex/phase-2-shou-zhu-comedy-10frames`。
+- 守株待兔样例已扩展为 10 镜头轻喜剧剧本，输出仍控制在短视频节奏内。
+- `scene_02` 明确兔子朝树桩方向跑，`scene_03` 明确兔子撞晕后安全躺在地上，无血腥描写。
+- `scene_06` 到 `scene_09` 明确等待动作递进：坐小板凳、趴草席看小虫、躺着打盹、坐起醒悟。
+- 等待段同时带季节递进：春末、初夏、夏末、初秋；作物、大树叶色和远山色调随时间变化。
+- 分镜提示词已加入固定背景连续性：右后方茅草屋、屋前栅栏水缸、从右下角经过树桩右侧通向房子的田间小径、
+  田垄方向和远山轮廓应保持一致。
+- 本地预览图目录：`outputs/shou-zhu-dai-tu/real_images_preview_comedy_10/`。
+- 该预览目录用于人工视觉审核，不替代正式 `images_raw`、`images_approved` 或未来真实 ComfyUI provider 产物。
+- 新增 `register-preview-images <preview_dir> --approved`，可以把人工认可的预览 PNG 复制到
+  `images_raw` 和 `images_approved`，重写 `05_video_jobs.json`，并写出 `auto=false` 的图片审核记录。
+- 当前守株待兔输出目录已用 `register-preview-images outputs\shou-zhu-dai-tu\real_images_preview_comedy_10 --approved`
+  登记 10 张预览图，并重新生成 mock 视频记录。

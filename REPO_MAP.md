@@ -38,6 +38,8 @@
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/quality_reports/real_image_preflight.json`：真实图片生成前门禁报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/quality_reports/comfyui_smoke_check.json`：ComfyUI 离线冒烟检查报告，默认被 git 忽略。
+- `outputs/{idiom_slug}/real_images_preview_comedy_10/`：内置图像生成的本地视觉预览和联系表，
+  用于人工审核风格、动作和场景连续性，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/review_packet.json`：统一人工审核包，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。

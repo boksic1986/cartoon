@@ -5,24 +5,28 @@
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、
 mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
-## 当前阶段：Phase 1.1 加固
+## 当前阶段：Phase 2.1 守株待兔 10 镜头视觉方案
 
 已完成：
 
-1. 初始化 Python 3.11 项目。
-2. 为所有核心 JSON 产物定义 Pydantic schema。
-3. 实现确定性的剧本、分镜、提示词、provider、字幕和合成步骤。
-4. 所有外部服务保留在 mock 或 dry-run 接口后面。
-5. baseline 已推送到 `git@github.com:boksic1986/cartoon.git`。
-6. 增加单步 CLI 流程测试。
-7. `build-image-prompts` 阶段写出 prompt 质量报告。
-8. 核心文档改为中文表达，更贴合成语故事语义。
+1. 将守株待兔样例扩展为 10 镜头轻喜剧剧本，保留儿童向、旁白驱动和短对白。
+2. 分镜补充兔子朝树桩奔跑、撞晕后安全躺地、等待动作差异和作物状态递进。
+3. 等待段明确为春末、初夏、夏末、初秋的季节递进：坐着等待、趴着看小虫、
+   躺着打盹、坐起醒悟。
+4. 图片提示词加入固定背景连续性：茅草屋、屋前栅栏水缸、田间小径、树桩、
+   田垄方向和远山轮廓保持一致。
+5. 使用内置图像生成能力产出 `outputs/shou-zhu-dai-tu/real_images_preview_comedy_10/`
+   预览图和联系表，供人工视觉审核；该目录仍是本地预览，不替代正式 provider 产物。
+6. 为 10 镜头数量、轻喜剧文案、等待动作、季节递进、背景连续性和 review count
+   补充回归测试。
+7. 增加 `register-preview-images <preview_dir> --approved`，用于把人工认可的预览图登记为
+   当前视频任务首帧输入，并写出 `auto=false` 的图片审核记录。
 
 下一步建议：
 
-1. 为装有 FFmpeg 的机器补充可选冒烟测试说明。
-2. 在真实 provider 开发前，先补 ComfyUI 本地冒烟测试清单。
-3. 为真实图片/视频接入设计人工审核 UI 或轻量表单。
+1. 准备真实 ComfyUI 工作流和模型 manifest，先完成手动前端冒烟。
+2. 冒烟通过后，再开发真实 ComfyUI provider；测试仍必须使用 mock HTTP 服务。
+3. 基于已登记首帧生成 Seedance dry-run 请求预览，人工确认运动提示词后再考虑真实视频 provider。
 
 ## 延后阶段
 

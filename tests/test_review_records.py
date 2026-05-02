@@ -18,12 +18,14 @@ def test_run_all_writes_auto_review_records(tmp_path, monkeypatch):
     script_review = read_json(review_dir / "script_review.json")
     image_review = read_json(review_dir / "image_review.json")
     video_review = read_json(review_dir / "video_review.json")
+    storyboard = read_json(tmp_path / "outputs" / "shou-zhu-dai-tu" / "02_storyboard.json")
+    scene_count = len(storyboard["scenes"])
 
     assert script_review["review_type"] == "script"
     assert script_review["summary"]["approved"] == 1
-    assert image_review["summary"]["approved"] == 6
+    assert image_review["summary"]["approved"] == scene_count
     assert image_review["items"][0]["status"] == "approved"
-    assert video_review["summary"]["approved"] == 6
+    assert video_review["summary"]["approved"] == scene_count
 
 
 def test_approve_images_writes_image_review_with_scene_paths(tmp_path, monkeypatch):
@@ -65,8 +67,10 @@ def test_approve_images_marks_missing_scene_image_pending(tmp_path, monkeypatch)
     review = read_json(story_dir / "review" / "image_review.json")
     first = next(item for item in review["items"] if item["scene_id"] == "scene_01")
     jobs = read_json(story_dir / "05_video_jobs.json")
+    storyboard = read_json(story_dir / "02_storyboard.json")
+    scene_count = len(storyboard["scenes"])
     assert first["status"] == "pending"
     assert first["asset_path"] is None
-    assert review["summary"]["approved"] == 5
+    assert review["summary"]["approved"] == scene_count - 1
     assert review["summary"]["pending"] == 1
-    assert len(jobs) == 5
+    assert len(jobs) == scene_count - 1
