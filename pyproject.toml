@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idiom-video-studio"
+version = "0.1.0"
+description = "Mock-first production pipeline for Chinese idiom story short videos."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Idiom Video Studio" }]
+dependencies = [
+  "pydantic>=2.7",
+  "pydantic-settings>=2.2",
+  "typer>=0.12",
+  "rich>=13.7",
+  "python-dotenv>=1.0",
+  "Pillow>=10.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+]
+
+[project.scripts]
+idiom-video = "idiom_video.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+

@@ -1,0 +1,34 @@
+{
+  "idiom": "守株待兔",
+  "pinyin": "shou zhu dai tu",
+  "slug": "shou-zhu-dai-tu",
+  "literal_meaning": "守在树桩旁，等待兔子再次撞上来。",
+  "moral": "不要把偶然的好运当成固定的方法，勤劳和思考才可靠。",
+  "source_note": "Traditional idiom story retold for children.",
+  "age_range": "8-14",
+  "characters": [
+    {
+      "id": "farmer_amu",
+      "name": "阿木",
+      "role": "farmer",
+      "visual_description": "圆脸、粗眉、穿米色布衣、戴棕色草帽的古代农夫",
+      "voice_description": "温和、憨厚、语速稍慢"
+    },
+    {
+      "id": "rabbit",
+      "name": "小兔",
+      "role": "animal",
+      "visual_description": "小巧的浅灰色兔子，动作灵活",
+      "voice_description": "不说话"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "field_morning",
+      "location": "古代农田",
+      "era": "ancient",
+      "description": "清晨的田地、树桩、小路和远处小屋"
+    }
+  ],
+  "tags": ["children", "education", "ancient", "mock"]
+}

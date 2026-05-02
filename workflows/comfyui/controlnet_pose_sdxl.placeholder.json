@@ -1,0 +1,5 @@
+{
+  "workflow": "controlnet_pose_sdxl",
+  "status": "placeholder",
+  "notes": "Reserved for pose or composition control in a later milestone."
+}

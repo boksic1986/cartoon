@@ -1,0 +1,13 @@
+{
+  "models": [
+    {
+      "name": "placeholder_sdxl_model",
+      "type": "checkpoint",
+      "local_path": "ComfyUI/models/checkpoints/placeholder.safetensors",
+      "source": "manual_download",
+      "license": "REVIEW_REQUIRED",
+      "commercial_use_allowed": null,
+      "notes": "Placeholder only. Confirm license before real production."
+    }
+  ]
+}

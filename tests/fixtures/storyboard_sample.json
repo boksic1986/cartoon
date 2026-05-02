@@ -1,0 +1,34 @@
+{
+  "idiom_slug": "shou-zhu-dai-tu",
+  "title": "守株待兔",
+  "aspect_ratio": "9:16",
+  "scenes": [
+    {
+      "scene_id": "scene_01",
+      "order": 1,
+      "title": "清晨耕田",
+      "visual_description": "阿木在古代农田里认真锄地。",
+      "camera": "中景，竖屏构图",
+      "action": "阿木缓慢锄地，阳光柔和。",
+      "duration_seconds": 5.0,
+      "image_prompt_hint": "古代农田清晨，农夫认真锄地",
+      "video_prompt_hint": "保持农夫和农田不变，轻微锄地动作",
+      "speech_cues": [
+        {
+          "cue_id": "scene_01_narration",
+          "scene_id": "scene_01",
+          "speaker_id": "narrator",
+          "speaker_name": "旁白",
+          "kind": "narration",
+          "voice_text": "很久以前，有个农夫叫阿木，每天都认真在田里干活。",
+          "subtitle_text": "很久以前，有个农夫叫阿木，每天都认真在田里干活。",
+          "emotion": "warm",
+          "mouth_action": "none",
+          "lip_sync_required": false,
+          "estimated_start_seconds": 0.0,
+          "estimated_end_seconds": 5.0
+        }
+      ]
+    }
+  ]
+}
