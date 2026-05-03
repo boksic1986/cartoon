@@ -8,10 +8,12 @@ from idiom_video.schemas import (
     RealVideoPreflightIssue,
     RealVideoPreflightReport,
     ReviewPacket,
+    SeedanceCostEstimate,
     SeedanceDryRunJob,
     VideoGenerationJob,
     VideoMotionReview,
 )
+from idiom_video.seedance_cost import video_jobs_fingerprint
 from idiom_video.utils.json_io import read_json
 from idiom_video.video_motion_review import find_video_motion_review_gaps
 
@@ -19,6 +21,7 @@ from idiom_video.video_motion_review import find_video_motion_review_gaps
 FINGERPRINT_PATHS = [
     "02_storyboard.json",
     "05_video_jobs.json",
+    "quality_reports/seedance_cost_estimate.json",
     "seedance_dry_run/jobs.json",
     "review/video_motion_review.json",
     "review/review_packet.json",
@@ -145,6 +148,34 @@ def _check_seedance_dry_run(
     checks["seedance_dry_run"] = "passed" if ok else "failed"
 
 
+def _check_seedance_cost_estimate(
+    story_dir: Path,
+    checks: dict[str, str],
+    issues: list[RealVideoPreflightIssue],
+) -> None:
+    path = story_dir / "quality_reports" / "seedance_cost_estimate.json"
+    if not path.exists():
+        checks["seedance_cost_estimate"] = "failed"
+        issues.append(_issue("Seedance cost estimate missing; run estimate-video-cost first", path.as_posix()))
+        return
+    try:
+        estimate = SeedanceCostEstimate.model_validate(read_json(path))
+    except Exception as exc:
+        checks["seedance_cost_estimate"] = "failed"
+        issues.append(_issue(f"Seedance cost estimate schema validation failed: {exc}", path.as_posix()))
+        return
+    video_jobs_path = story_dir / "05_video_jobs.json"
+    if not video_jobs_path.exists():
+        checks["seedance_cost_estimate"] = "failed"
+        issues.append(_issue("current video jobs missing for cost estimate validation", video_jobs_path.as_posix()))
+        return
+    if estimate.video_jobs_fingerprint != video_jobs_fingerprint(video_jobs_path):
+        checks["seedance_cost_estimate"] = "failed"
+        issues.append(_issue("Seedance cost estimate is stale; rerun estimate-video-cost", path.as_posix()))
+        return
+    checks["seedance_cost_estimate"] = "passed"
+
+
 def _check_video_motion_review(
     story_dir: Path,
     checks: dict[str, str],
@@ -258,6 +289,7 @@ def build_real_video_preflight_report(story_dir: Path) -> RealVideoPreflightRepo
 
     _check_file(story_dir / "02_storyboard.json", checks, issues, "storyboard")
     _check_video_jobs(story_dir, checks, issues)
+    _check_seedance_cost_estimate(story_dir, checks, issues)
     _check_seedance_dry_run(story_dir, checks, issues)
     _check_video_motion_review(story_dir, checks, issues)
     _check_review_packet(story_dir, checks, issues)
