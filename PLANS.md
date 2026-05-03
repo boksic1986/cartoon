@@ -30,6 +30,21 @@
 1. 本阶段只生成提交计划，不提交任务、不轮询、不下载真实视频。
 2. 下一阶段若实现真实 provider，必须先补 mock HTTP 测试、任务状态 schema、失败重试策略和显式人工确认。
 
+## 当前阶段：Phase 2.8 Seedance mock 任务生命周期
+
+目标：
+
+1. 新增 `submit-seedance-tasks --provider mock`，读取 `seedance_submit/submit_plan.json`，写出本地 mock 提交任务账本和逐镜 request/response JSON。
+2. 新增 `poll-seedance-tasks --provider mock`，读取 mock submissions，写出 mock poll/download response、本地占位视频文件和 `videos/seedance_clips.json`。
+3. 新增 `SeedanceTaskBatch`、`SeedanceTaskRecord`、`SeedanceTaskResults` 和 `SeedanceTaskResult` schema，记录任务生命周期但不包含真实 endpoint、header、credential、account 或下载 URL。
+4. `quality-check` 在 task 产物存在时校验 schema、提交计划指纹、task/result 一致性、mock request/response、占位视频和 clips manifest。
+5. task JSON 和 clips manifest 会做敏感字符串扫描，防止凭证、敏感请求头或账号标识进入产物。
+
+停止线：
+
+1. `--provider seedance` 和其它非 mock provider 仍必须拒绝，不读取 API key，不发网络请求。
+2. 本阶段不实现真实提交、真实轮询、真实下载、失败重试调度或真实计费回填。
+
 ## MVP 目标
 
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、

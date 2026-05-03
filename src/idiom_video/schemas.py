@@ -425,6 +425,74 @@ class SeedanceSubmitPlan(StrictSchemaModel):
         return self
 
 
+SeedanceTaskStatus = Literal["submitted", "succeeded", "failed"]
+
+
+class SeedanceTaskRecord(StrictSchemaModel):
+    task_id: str
+    source_job_id: str
+    scene_id: str
+    image_path: str
+    prompt: str
+    duration_seconds: float = Field(gt=0, le=10)
+    intended_output_path: str
+    request_preview_path: str
+    submit_request_path: str
+    submit_response_path: str
+    status: Literal["submitted"]
+
+
+class SeedanceTaskBatch(StrictSchemaModel):
+    ok: Literal[True]
+    provider: Literal["seedance"] = "seedance"
+    client: Literal["mock"] = "mock"
+    dry_run: Literal[True] = True
+    submit_plan_path: str
+    submit_plan_fingerprint: str
+    task_count: int = Field(gt=0)
+    tasks: list[SeedanceTaskRecord]
+    next_step: Literal["MOCK_POLL_SEEDANCE_TASKS"]
+    notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_task_count(self) -> SeedanceTaskBatch:
+        if self.task_count != len(self.tasks):
+            raise ValueError("task_count must match tasks length")
+        return self
+
+
+class SeedanceTaskResult(StrictSchemaModel):
+    task_id: str
+    source_job_id: str
+    scene_id: str
+    status: Literal["succeeded"]
+    output_path: str
+    poll_response_path: str
+    download_response_path: str
+    duration_seconds: float = Field(gt=0, le=10)
+    provider: Literal["seedance_mock"] = "seedance_mock"
+
+
+class SeedanceTaskResults(StrictSchemaModel):
+    ok: Literal[True]
+    provider: Literal["seedance"] = "seedance"
+    client: Literal["mock"] = "mock"
+    dry_run: Literal[True] = True
+    submit_plan_path: str
+    submit_plan_fingerprint: str
+    submissions_path: str
+    task_count: int = Field(gt=0)
+    results: list[SeedanceTaskResult]
+    next_step: Literal["MOCK_SEEDANCE_COMPLETE"]
+    notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_task_count(self) -> SeedanceTaskResults:
+        if self.task_count != len(self.results):
+            raise ValueError("task_count must match results length")
+        return self
+
+
 class VoiceJob(StrictSchemaModel):
     job_id: str
     cue_id: str
