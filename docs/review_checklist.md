@@ -39,6 +39,10 @@
   当 `provider=pillow_gif_fallback` 时，还应确认 `fallback_note_path` 存在并说明没有使用 FFmpeg。
 - 本地 `review_v1.mp4` 或 `review_v1.gif` 只用于检查镜头顺序、字幕节奏和首帧连续性，
   不代表真实 Seedance 运镜、真实配音或口型同步已经完成。
+- v1 审片反馈中已发现第一镜和最后一镜略像；后续生成结尾图时应确认 `scene_10` 明显不同于清晨耕田：
+  初秋傍晚、收起小板凳和草席、田垄侧面重新锄地、恢复中的新绿苗。
+- 如果 `final/review_v1_manifest.json` 中 `has_audio=true`，应确认 `audio_path` 文件存在，
+  并理解该音轨只是本地 mock 节奏占位，不是真实 TTS 或真实配音。
 
 ## 配音与口型审核
 
@@ -71,6 +75,7 @@
   `next_step` 应为 `STOP_BEFORE_REAL_VIDEO_GENERATION`。
 - 如果存在 `09_review_video_plan.json` 或 `final/review_v1_manifest.json`，`quality-check`
   应已确认审片计划 schema、首帧引用、最终输出和 fallback 说明文件存在。
+- 如果本地审片 manifest 记录了 `has_audio=true`，`quality-check` 应已确认 `audio_path` 存在。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。

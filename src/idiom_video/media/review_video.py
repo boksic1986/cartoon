@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 import shutil
 import subprocess
+import wave
+from array import array
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -78,6 +80,7 @@ def compose_review_video(
     fps: int = 12,
     ffmpeg_path: str | None = None,
     force_fallback: bool = False,
+    with_mock_audio: bool = False,
 ) -> ReviewVideoManifest:
     story_path = Path(story_dir).resolve()
     final_dir = story_path / "final"
@@ -86,16 +89,19 @@ def compose_review_video(
     plan = build_review_video_plan(story_path, width=width, height=height, fps=fps)
     plan_path = write_json(story_path / "09_review_video_plan.json", plan)
     storyboard = Storyboard.model_validate(read_json(story_path / "02_storyboard.json"))
+    audio_path = _write_mock_review_audio(plan, storyboard) if with_mock_audio else None
 
     ffmpeg = None if force_fallback else _find_ffmpeg(ffmpeg_path)
     if ffmpeg:
         try:
-            _render_mp4(plan, storyboard, Path(ffmpeg))
+            _render_mp4(plan, storyboard, Path(ffmpeg), audio_path=audio_path)
             manifest = ReviewVideoManifest(
                 ok=True,
                 provider="local_ffmpeg",
                 plan_path=plan_path.as_posix(),
                 output_path=plan.output_path,
+                audio_path=audio_path.as_posix() if audio_path else None,
+                has_audio=audio_path is not None,
                 fallback_note_path=None,
                 used_ffmpeg=True,
                 clip_count=len(plan.clips),
@@ -103,15 +109,18 @@ def compose_review_video(
                 height=plan.height,
                 fps=plan.fps,
                 total_duration_seconds=plan.total_duration_seconds,
-                message="Created local review MP4 from approved still images and burned-in subtitles.",
+                message=(
+                    "Created local review MP4 from approved still images, burned-in subtitles"
+                    + (" and mock audio track." if audio_path else ".")
+                ),
             )
             write_json(final_dir / "review_v1_manifest.json", manifest)
             return manifest
         except Exception as exc:
-            return _write_gif_fallback(plan, storyboard, plan_path, f"FFmpeg failed: {exc}")
+            return _write_gif_fallback(plan, storyboard, plan_path, f"FFmpeg failed: {exc}", audio_path=audio_path)
 
     reason = "FFmpeg was not available." if not force_fallback else "Fallback mode was requested."
-    return _write_gif_fallback(plan, storyboard, plan_path, reason)
+    return _write_gif_fallback(plan, storyboard, plan_path, reason, audio_path=audio_path)
 
 
 def _find_ffmpeg(ffmpeg_path: str | None = None) -> str | None:
@@ -133,50 +142,72 @@ def _find_ffmpeg(ffmpeg_path: str | None = None) -> str | None:
         return None
 
 
-def _render_mp4(plan: ReviewVideoPlan, storyboard: Storyboard, ffmpeg: Path) -> None:
+def _render_mp4(plan: ReviewVideoPlan, storyboard: Storyboard, ffmpeg: Path, *, audio_path: Path | None = None) -> None:
     final_dir = Path(plan.output_path).parent
     frames_dir = final_dir / "review_v1_frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     for frame in frames_dir.glob("frame_*.jpg"):
         frame.unlink()
 
-    frame_index = 1
-    scenes_by_id = {scene.scene_id: scene for scene in storyboard.scenes}
-    for clip in plan.clips:
-        scene = scenes_by_id[clip.scene_id]
-        source = Image.open(clip.image_path)
-        frame_count = max(1, int(round(clip.duration_seconds * plan.fps)))
-        for local_index in range(frame_count):
-            progress = local_index / max(frame_count - 1, 1)
-            absolute_second = clip.start_seconds + progress * clip.duration_seconds
-            frame = _render_frame(source, scene, clip, plan.width, plan.height, progress, absolute_second)
-            frame.save(frames_dir / f"frame_{frame_index:05d}.jpg", quality=88, optimize=True)
-            frame_index += 1
-        source.close()
-
-    command = [
-        str(ffmpeg),
-        "-y",
-        "-framerate",
-        str(plan.fps),
-        "-i",
-        str(frames_dir / "frame_%05d.jpg"),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        plan.output_path,
-    ]
-    subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    for frame in frames_dir.glob("frame_*.jpg"):
-        frame.unlink()
+    video_output = Path(plan.output_path)
+    video_only_output = video_output.with_name("review_v1_video_only.mp4") if audio_path else video_output
     try:
-        frames_dir.rmdir()
-    except OSError:
-        pass
+        frame_index = 1
+        scenes_by_id = {scene.scene_id: scene for scene in storyboard.scenes}
+        for clip in plan.clips:
+            scene = scenes_by_id[clip.scene_id]
+            with Image.open(clip.image_path) as source:
+                frame_count = max(1, int(round(clip.duration_seconds * plan.fps)))
+                for local_index in range(frame_count):
+                    progress = local_index / max(frame_count - 1, 1)
+                    absolute_second = clip.start_seconds + progress * clip.duration_seconds
+                    frame = _render_frame(source, scene, clip, plan.width, plan.height, progress, absolute_second)
+                    frame.save(frames_dir / f"frame_{frame_index:05d}.jpg", quality=88, optimize=True)
+                    frame_index += 1
+
+        command = [
+            str(ffmpeg),
+            "-y",
+            "-framerate",
+            str(plan.fps),
+            "-i",
+            str(frames_dir / "frame_%05d.jpg"),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(video_only_output),
+        ]
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if audio_path:
+            mux_command = [
+                str(ffmpeg),
+                "-y",
+                "-i",
+                str(video_only_output),
+                "-i",
+                str(audio_path),
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-shortest",
+                str(video_output),
+            ]
+            subprocess.run(mux_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            video_only_output.unlink(missing_ok=True)
+    finally:
+        if audio_path:
+            video_only_output.unlink(missing_ok=True)
+        for frame in frames_dir.glob("frame_*.jpg"):
+            frame.unlink()
+        try:
+            frames_dir.rmdir()
+        except OSError:
+            pass
 
 
 def _write_gif_fallback(
@@ -184,6 +215,8 @@ def _write_gif_fallback(
     storyboard: Storyboard,
     plan_path: Path,
     reason: str,
+    *,
+    audio_path: Path | None = None,
 ) -> ReviewVideoManifest:
     final_dir = Path(plan.fallback_path).parent
     final_dir.mkdir(parents=True, exist_ok=True)
@@ -215,6 +248,7 @@ def _write_gif_fallback(
                 "Local review video fallback.",
                 reason,
                 f"GIF output: {fallback_path.as_posix()}",
+                f"Mock audio output: {audio_path.as_posix()}" if audio_path else "Mock audio output: none",
                 "Install FFmpeg or the optional imageio-ffmpeg package to create review_v1.mp4.",
                 "",
             ]
@@ -227,6 +261,8 @@ def _write_gif_fallback(
         provider="pillow_gif_fallback",
         plan_path=plan_path.as_posix(),
         output_path=fallback_path.as_posix(),
+        audio_path=audio_path.as_posix() if audio_path else None,
+        has_audio=False,
         fallback_note_path=note_path.as_posix(),
         used_ffmpeg=False,
         clip_count=len(plan.clips),
@@ -234,10 +270,50 @@ def _write_gif_fallback(
         height=plan.height,
         fps=plan.fps,
         total_duration_seconds=plan.total_duration_seconds,
-        message=f"{reason} Generated animated GIF fallback for review.",
+        message=f"{reason} Generated animated GIF fallback for review; mock audio cannot be muxed into GIF.",
     )
     write_json(final_dir / "review_v1_manifest.json", manifest)
     return manifest
+
+
+def _write_mock_review_audio(plan: ReviewVideoPlan, storyboard: Storyboard) -> Path:
+    output = Path(plan.story_dir) / "audio" / "review_mock_track.wav"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    sample_rate = 24_000
+    total_samples = max(1, int(math.ceil(plan.total_duration_seconds * sample_rate)))
+    samples = array("h", [0]) * total_samples
+
+    for scene in storyboard.scenes:
+        for cue in scene.speech_cues:
+            start = max(0, int(round(cue.estimated_start_seconds * sample_rate)))
+            end = min(total_samples, int(round(cue.estimated_end_seconds * sample_rate)))
+            if end <= start:
+                continue
+            frequency = 220.0 if cue.kind == "narration" else 330.0
+            if cue.emotion in {"cheerful", "playful", "comic_surprise"}:
+                frequency += 35.0
+            amplitude = 2600 if cue.kind == "narration" else 3100
+            length = end - start
+            fade = min(sample_rate // 20, max(1, length // 5))
+            for sample_index in range(start, end):
+                local = sample_index - start
+                envelope = 1.0
+                if local < fade:
+                    envelope = local / fade
+                elif end - sample_index < fade:
+                    envelope = (end - sample_index) / fade
+                t = sample_index / sample_rate
+                syllable_pulse = 0.65 + 0.35 * (math.sin(2 * math.pi * 3.5 * t) ** 2)
+                value = int(amplitude * envelope * syllable_pulse * math.sin(2 * math.pi * frequency * t))
+                mixed = samples[sample_index] + value
+                samples[sample_index] = max(-32768, min(32767, mixed))
+
+    with wave.open(str(output), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(samples.tobytes())
+    return output
 
 
 def _render_frame(

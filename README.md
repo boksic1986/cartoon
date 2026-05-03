@@ -106,6 +106,7 @@ idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video build-review-video-plan outputs/shou-zhu-dai-tu/
 idiom-video compose-review-video outputs/shou-zhu-dai-tu/
+idiom-video compose-review-video outputs/shou-zhu-dai-tu/ --with-mock-audio
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
 idiom-video quality-check outputs/shou-zhu-dai-tu/
 ```
@@ -166,6 +167,16 @@ outputs/shou-zhu-dai-tu/final/review_v1_fallback.txt
 ```
 
 这个本地审片版本用于检查剧情节奏、字幕、画面顺序和首帧连续性；它不是 Seedance 的真实运镜结果，也不代表口型同步或真实配音已经完成。
+
+如果需要检查视频容器里是否已经有本地占位音轨，可以使用：
+
+```powershell
+idiom-video compose-review-video outputs/shou-zhu-dai-tu/ --with-mock-audio
+```
+
+该命令会生成 `audio/review_mock_track.wav`，并在 FFmpeg 可用时把它 mux 进
+`final/review_v1.mp4`。这条音轨只是根据 speech cue 时间生成的本地 mock 节奏占位，
+不是真实 TTS，不代表真实旁白、音效或口型同步已经完成。
 
 ## 审核记录
 

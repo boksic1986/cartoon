@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 2.4 本地第一版审片视频开发中。
+状态：Phase 2.5 审片反馈闭环与本地 mock 音轨开发中。
 
 ## Git
 
-- 分支：`codex/phase-2.4-local-review-video`
+- 分支：`codex/phase-2.5-audio-review-video`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`bb85807 Merge pull request #12 from boksic1986/codex/phase-2.3-real-video-preflight`
+- 已合并功能提交：`1bfb989 Merge pull request #13 from boksic1986/codex/phase-2.4-local-review-video`
 
 ## 环境
 
@@ -30,12 +30,21 @@
 D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe compose-review-video outputs\shou-zhu-dai-tu
+D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe compose-review-video outputs\shou-zhu-dai-tu --with-mock-audio
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu
 ```
 
+## 2026-05-03 Phase 2.5 审片反馈闭环与本地 mock 音轨
+
+- 当前分支：`codex/phase-2.5-audio-review-video`。
+- v1 审片反馈：第一张图和最后一张略像，其他镜头暂无明显问题。
+- 已将 `scene_10` 分镜提示改为初秋傍晚、收起小板凳和草席、田垄侧面重新锄地、恢复中的新绿苗，避免后续图片生成继续贴近第一镜。
+- 新增 `compose-review-video --with-mock-audio`，生成 `audio/review_mock_track.wav`，并在 FFmpeg 可用时 mux 进 `final/review_v1.mp4`。
+- `final/review_v1_manifest.json` 会记录 `has_audio` 与 `audio_path`；`quality-check` 会检查音频文件存在。
+- 本地 mock 音轨只是节奏占位，不是真实 TTS，不代表真实旁白、音效或口型同步完成。
+
 ## 2026-05-03 Phase 2.4 本地审片视频
 
-- 当前分支：`codex/phase-2.4-local-review-video`。
 - 新增目标：基于 `images_approved` 中已登记的守株待兔 10 张中国风卡通首帧，生成第一版可本地观看的审片视频。
 - 新增产物：`09_review_video_plan.json`、`final/review_v1_manifest.json`、`final/review_v1.mp4` 或 `final/review_v1.gif`。
 - 新增命令：`build-review-video-plan` 和 `compose-review-video`。
@@ -44,7 +53,10 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：105 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：110 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe compose-review-video outputs\shou-zhu-dai-tu --with-mock-audio`：已生成带本地 mock 音轨的 `final/review_v1.mp4`。
+- `final/review_v1_manifest.json`：`provider=local_ffmpeg`、`has_audio=true`、`audio_path=audio/review_mock_track.wav`。
+- FFmpeg 检测：`review_v1.mp4` 包含 H.264 视频流和 AAC mono 音频流，时长 51 秒。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
