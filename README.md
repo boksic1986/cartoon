@@ -61,6 +61,7 @@ audio/voice_assets.json
 08_lipsync_jobs.json
 quality_reports/prompt_quality.json
 quality_reports/full_quality.json
+quality_reports/real_video_preflight.json
 review/script_review.json
 review/image_review.json
 review/video_review.json
@@ -91,6 +92,7 @@ idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-audio outputs/shou-zhu-dai-tu/06_voice_jobs.json --provider mock
 idiom-video build-lipsync-jobs outputs/shou-zhu-dai-tu/07_alignment.json
 idiom-video build-review-packet outputs/shou-zhu-dai-tu/
+idiom-video real-video-preflight outputs/shou-zhu-dai-tu/
 idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
@@ -122,6 +124,9 @@ workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表
 如果存在 `quality_reports/real_image_preflight.json`，`quality-check` 会校验真实图片生成前门禁报告；
 未通过门禁时，完整质量检查也会失败。若该报告曾经通过，`quality-check` 会按报告里的 workflow
 和 manifest 路径重新执行离线 preflight，防止人工审核后又改动 workflow 或模型记录。
+如果存在 `quality_reports/real_video_preflight.json`，`quality-check` 会校验真实视频生成前门禁报告；
+未通过门禁时，完整质量检查也会失败。若该报告曾经通过，`quality-check` 会重新执行离线
+video preflight，防止人工审核后又改动 Seedance dry-run、运动审核或审核包。
 
 ## 审核记录
 
@@ -253,6 +258,20 @@ idiom-video build-video-motion-review outputs/shou-zhu-dai-tu
 人工确认每个镜头的 `motion_prompt`、`image_path`、`request_preview_path` 和
 `continuity_prompt_present` 后，再把状态改为 `approved`，或在只做本地技术闭环时使用
 `--auto` 生成自动通过的审核记录。
+
+当 Seedance dry-run、运动审核和统一审核包都准备好后，再运行真实视频生成前门禁：
+
+```powershell
+idiom-video real-video-preflight outputs/shou-zhu-dai-tu
+```
+
+该命令会写出 `quality_reports/real_video_preflight.json`。如果通过，报告中的
+`next_step` 会是 `STOP_BEFORE_REAL_VIDEO_GENERATION`，表示已经到达真实视频生成前的停止线；
+此时应停下来由人工确认是否允许接入或调用真实 Seedance 生成视频。
+门禁会校验 `seedance_dry_run/jobs.json` 与当前 `05_video_jobs.json` 的 scene、首帧、
+prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-run 请求。
+报告还会记录当前产物指纹；`quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件
+重新生成后需要重新运行 `real-video-preflight`。
 
 ## 项目管理文档
 

@@ -13,6 +13,8 @@ from idiom_video.schemas import (
     ModelManifest,
     RealImagePreflightIssue,
     RealImagePreflightReport,
+    RealVideoPreflightIssue,
+    RealVideoPreflightReport,
     ReviewPacket,
     ReviewPacketItem,
     SeedanceDryRunJob,
@@ -291,3 +293,28 @@ def test_video_motion_review_schema_is_strict():
     item_payload["motion_prompt"] = "   "
     with pytest.raises(ValidationError):
         VideoMotionReviewItem.model_validate(item_payload)
+
+
+def test_real_video_preflight_report_schema_is_strict():
+    report = RealVideoPreflightReport(
+        ok=True,
+        story_dir="outputs/story",
+        seedance_dry_run_jobs_path="outputs/story/seedance_dry_run/jobs.json",
+        video_motion_review_path="outputs/story/review/video_motion_review.json",
+        review_packet_path="outputs/story/review/review_packet.json",
+        artifact_fingerprint="sha256:abc123",
+        checks={"video_motion_review": "passed"},
+        issues=[],
+        next_step="STOP_BEFORE_REAL_VIDEO_GENERATION",
+        stop_reason="Ready to generate real videos; stop for user confirmation.",
+    )
+
+    assert report.ok is True
+
+    payload = report.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        RealVideoPreflightReport.model_validate(payload)
+
+    with pytest.raises(ValidationError):
+        RealVideoPreflightIssue.model_validate({"message": "x", "unexpected": "reject"})
