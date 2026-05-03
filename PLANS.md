@@ -5,9 +5,24 @@
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、
 mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
-## 当前阶段：Phase 2.4 本地第一版审片视频
+## 当前阶段：Phase 2.5 审片反馈闭环与本地 mock 音轨
 
 目标：
+
+1. 吸收 v1 审片反馈：第一镜和最后一镜略像，后续提示词需要明确拉开结尾构图和季节状态。
+2. 结尾镜头改为初秋傍晚，阿木先收起小板凳和草席，再从田垄侧面重新锄地，并展示恢复中的新绿苗。
+3. `compose-review-video --with-mock-audio` 生成本地 mock 音轨并 mux 进 MP4，用于检查音轨存在性和 cue 节奏。
+4. `final/review_v1_manifest.json` 记录 `has_audio` 和 `audio_path`，`quality-check` 校验音频文件存在。
+5. 继续保持 mock-first：本地 mock 音轨不是 TTS，不调用真实配音服务，也不代表口型同步完成。
+
+停止线：
+
+1. 本阶段只生成本地审片版，不接入真实视频生成 provider。
+2. 本地 mock 音轨只用于节奏占位；真实旁白、真实音效、真实配音授权和口型同步仍需要后续阶段接入。
+
+## Phase 2.4 本地第一版审片视频
+
+已完成：
 
 1. 不调用真实 Seedance、ComfyUI、OpenAI 或 TTS 服务。
 2. 基于已经人工认可并登记到 `images_approved` 的守株待兔 10 张中国风卡通首帧，生成可本地观看的第一版审片视频。
@@ -15,11 +30,6 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
 4. `compose-review-video` 优先使用本地 FFmpeg 或可选 `imageio-ffmpeg` 生成 `final/review_v1.mp4`。
 5. 如果没有 FFmpeg，使用 Pillow 生成 `final/review_v1.gif` 和 `final/review_v1_fallback.txt`，保证仍然有可视化审片产物。
 6. `quality-check` 在审片视频产物存在时校验 schema、首帧引用、输出文件和 fallback 说明文件。
-
-停止线：
-
-1. 本阶段只生成本地审片版，不接入真实视频生成 provider。
-2. 本地审片版只检查图片顺序、字幕节奏和首帧连续性；真实运镜、真实配音和口型同步仍需要后续阶段接入。
 
 ## 当前阶段：Phase 2.3 真实视频生成前门禁
 

@@ -51,6 +51,7 @@
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。
+- `outputs/{idiom_slug}/audio/review_mock_track.wav`：本地审片视频的 mock 节奏占位音轨，默认被 git 忽略。
 - `outputs/{idiom_slug}/lipsync/`：mock 口型任务占位结果，默认被 git 忽略。
 
 ## 测试

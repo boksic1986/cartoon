@@ -72,6 +72,9 @@ def test_storyboard_waiting_beats_have_distinct_actions_and_crop_progression():
     assert "初秋" in scene_by_id["scene_09"].action
     assert "更多杂草" in scene_by_id["scene_09"].action
     assert "远山偏灰蓝" in scene_by_id["scene_09"].action
+    assert "结尾镜头要明显区别于第一镜" in scene_by_id["scene_10"].action
+    assert "收起小板凳" in scene_by_id["scene_10"].action
+    assert "初秋" in scene_by_id["scene_10"].action
 
 
 def test_waiting_image_hints_include_seasonal_background_changes():
@@ -83,6 +86,7 @@ def test_waiting_image_hints_include_seasonal_background_changes():
     assert "远山青绿" in scene_by_id["scene_07"].image_prompt_hint
     assert "树冠开始泛黄" in scene_by_id["scene_08"].image_prompt_hint
     assert "远山偏灰蓝" in scene_by_id["scene_09"].image_prompt_hint
+    assert "结尾镜头要明显区别于第一镜" in scene_by_id["scene_10"].image_prompt_hint
 
 
 def test_storyboard_prompts_keep_house_and_field_path_consistent():

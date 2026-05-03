@@ -314,6 +314,8 @@ class ReviewVideoManifest(StrictSchemaModel):
     provider: ReviewVideoProvider
     plan_path: str
     output_path: str
+    audio_path: str | None = None
+    has_audio: bool = False
     fallback_note_path: str | None = None
     used_ffmpeg: bool
     clip_count: int = Field(ge=0)

@@ -1,11 +1,12 @@
+import subprocess
 from pathlib import Path
 
 from PIL import Image
 from typer.testing import CliRunner
 
 from idiom_video.cli import app
-from idiom_video.media.review_video import build_review_video_plan
-from idiom_video.schemas import ReviewVideoManifest, ReviewVideoPlan
+from idiom_video.media.review_video import _render_mp4, build_review_video_plan
+from idiom_video.schemas import ReviewVideoManifest, ReviewVideoPlan, Storyboard
 from idiom_video.utils.json_io import read_json, write_json
 
 
@@ -55,6 +56,7 @@ def test_compose_review_video_force_fallback_writes_review_artifacts(tmp_path):
             "640",
             "--fps",
             "4",
+            "--with-mock-audio",
         ],
     )
 
@@ -66,8 +68,11 @@ def test_compose_review_video_force_fallback_writes_review_artifacts(tmp_path):
     assert manifest.used_ffmpeg is False
     assert manifest.provider == "pillow_gif_fallback"
     assert manifest.output_path.endswith("final/review_v1.gif")
+    assert manifest.audio_path is not None
+    assert manifest.has_audio is False
     assert manifest.fallback_note_path is not None
     assert Path(manifest.output_path).exists()
+    assert Path(manifest.audio_path).exists()
     assert Path(manifest.fallback_note_path).exists()
 
 
@@ -124,3 +129,31 @@ def test_quality_check_fails_when_review_video_manifest_drifts_from_plan(tmp_pat
     assert report["checks"]["review_video_manifest_files"] == "failed"
     assert any("provider does not match used_ffmpeg" in issue["message"] for issue in report["issues"])
     assert any("clip count differs from review video plan" in issue["message"] for issue in report["issues"])
+
+
+def test_render_mp4_cleans_temp_files_when_audio_mux_fails(tmp_path, monkeypatch):
+    story_dir = _prepare_review_story(tmp_path)
+    plan = build_review_video_plan(story_dir, width=180, height=320, fps=2)
+    storyboard = Storyboard.model_validate(read_json(story_dir / "02_storyboard.json"))
+    audio_path = story_dir / "audio" / "review_mock_track.wav"
+    audio_path.parent.mkdir()
+    audio_path.write_bytes(b"not a real wav")
+    calls = {"count": 0}
+
+    def fake_run(command, check, stdout, stderr):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            Path(command[-1]).write_bytes(b"video only")
+            return subprocess.CompletedProcess(command, 0)
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr("idiom_video.media.review_video.subprocess.run", fake_run)
+
+    try:
+        _render_mp4(plan, storyboard, Path("ffmpeg"), audio_path=audio_path)
+    except subprocess.CalledProcessError:
+        pass
+
+    final_dir = Path(plan.output_path).parent
+    assert not (final_dir / "review_v1_frames").exists()
+    assert not (final_dir / "review_v1_video_only.mp4").exists()

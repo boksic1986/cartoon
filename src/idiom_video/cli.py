@@ -587,6 +587,15 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                 issues.append(
                     _quality_issue("review video fallback note missing", "final/review_v1_manifest.json")
                 )
+            if review_video_manifest.has_audio and review_video_manifest.provider != "local_ffmpeg":
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video audio can only be muxed into MP4", "final/review_v1_manifest.json"))
+            if review_video_manifest.has_audio and not review_video_manifest.audio_path:
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video audio path missing", "final/review_v1_manifest.json"))
+            if review_video_manifest.audio_path and not Path(review_video_manifest.audio_path).exists():
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video audio file missing", review_video_manifest.audio_path))
             if not Path(review_video_manifest.output_path).exists():
                 review_video_output_missing = True
                 issues.append(_quality_issue("review video output missing", review_video_manifest.output_path))
@@ -1111,6 +1120,7 @@ def compose_review_video_command(
     fps: int = typer.Option(12, "--fps"),
     ffmpeg: Path | None = typer.Option(None, "--ffmpeg"),
     force_fallback: bool = typer.Option(False, "--force-fallback"),
+    with_mock_audio: bool = typer.Option(False, "--with-mock-audio"),
 ) -> None:
     try:
         manifest = compose_review_video_file(
@@ -1120,6 +1130,7 @@ def compose_review_video_command(
             fps=fps,
             ffmpeg_path=str(ffmpeg) if ffmpeg else None,
             force_fallback=force_fallback,
+            with_mock_audio=with_mock_audio,
         )
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
