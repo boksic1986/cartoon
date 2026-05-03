@@ -43,15 +43,19 @@ from idiom_video.schemas import (
     SeedanceCostEstimate,
     SeedanceDryRunJob,
     SeedanceSubmitPlan,
+    SeedanceTaskBatch,
+    SeedanceTaskResults,
     Storyboard,
     VideoGenerationJob,
+    VideoClip,
     VideoMotionReview,
     VoiceAsset,
     VoiceJob,
 )
 from idiom_video.script_writer import build_script
 from idiom_video.seedance_cost import estimate_seedance_cost, video_jobs_fingerprint
-from idiom_video.seedance_submit import build_seedance_submit_plan, validate_seedance_submit_plan_current
+from idiom_video.seedance_lifecycle import poll_seedance_tasks_mock, submit_plan_fingerprint, submit_seedance_tasks_mock
+from idiom_video.seedance_submit import SENSITIVE_MARKERS, build_seedance_submit_plan, validate_seedance_submit_plan_current
 from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
 from idiom_video.utils.logging import info, warn
@@ -122,6 +126,27 @@ def _write_review_record(story_dir: Path, review_type: str, items: list[ReviewIt
 
 def _quality_issue(message: str, path: str | None = None) -> QualityIssue:
     return QualityIssue(message=message, path=path)
+
+
+def _contains_sensitive_string(value: Any) -> bool:
+    if isinstance(value, str):
+        lowered = value.lower()
+        return any(marker in lowered for marker in SENSITIVE_MARKERS)
+    if isinstance(value, list):
+        return any(_contains_sensitive_string(item) for item in value)
+    if isinstance(value, dict):
+        return any(_contains_sensitive_string(key) or _contains_sensitive_string(item) for key, item in value.items())
+    return False
+
+
+def _artifact_has_sensitive_string(path: Path) -> bool:
+    if not path.exists():
+        return False
+    try:
+        return _contains_sensitive_string(read_json(path))
+    except Exception:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        return _contains_sensitive_string(text)
 
 
 def _validate_json_artifact(
@@ -588,6 +613,162 @@ def _run_full_quality_check(story_dir: Path) -> dict:
     else:
         checks["seedance_submit_plan_schema"] = "skipped"
         checks["seedance_submit_plan_consistency"] = "skipped"
+
+    seedance_task_submissions_path = story_dir / "seedance_tasks" / "submissions.json"
+    if seedance_task_submissions_path.exists():
+        seedance_task_batch = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "seedance_task_submissions_schema",
+            "seedance_tasks/submissions.json",
+            SeedanceTaskBatch.model_validate,
+        )
+        task_submission_missing = seedance_task_batch is None
+        if seedance_task_batch is not None:
+            submit_plan_path = Path(seedance_task_batch.submit_plan_path)
+            if not submit_plan_path.exists():
+                task_submission_missing = True
+                issues.append(_quality_issue("Seedance submit plan missing for task submissions", seedance_task_batch.submit_plan_path))
+            else:
+                current_submit_plan_fingerprint = submit_plan_fingerprint(submit_plan_path)
+                if seedance_task_batch.submit_plan_fingerprint != current_submit_plan_fingerprint:
+                    task_submission_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "Seedance task submissions are stale; rerun submit-seedance-tasks",
+                            "seedance_tasks/submissions.json",
+                        )
+                    )
+            for task in seedance_task_batch.tasks:
+                for label, artifact_path in [
+                    ("Seedance task image missing", task.image_path),
+                    ("Seedance task request preview missing", task.request_preview_path),
+                    ("Seedance mock submit request missing", task.submit_request_path),
+                    ("Seedance mock submit response missing", task.submit_response_path),
+                ]:
+                    if not Path(artifact_path).exists():
+                        task_submission_missing = True
+                        issues.append(_quality_issue(label, artifact_path))
+                for artifact_path in [task.submit_request_path, task.submit_response_path]:
+                    path = Path(artifact_path)
+                    if path.exists() and _artifact_has_sensitive_string(path):
+                        task_submission_missing = True
+                        issues.append(_quality_issue("Seedance task artifact contains sensitive string", artifact_path))
+            if _artifact_has_sensitive_string(seedance_task_submissions_path):
+                task_submission_missing = True
+                issues.append(
+                    _quality_issue(
+                        "Seedance task submissions contain sensitive string",
+                        "seedance_tasks/submissions.json",
+                    )
+                )
+        checks["seedance_task_submissions_files"] = "failed" if task_submission_missing else "passed"
+    else:
+        seedance_task_batch = None
+        checks["seedance_task_submissions_schema"] = "skipped"
+        checks["seedance_task_submissions_files"] = "skipped"
+
+    seedance_task_results_path = story_dir / "seedance_tasks" / "results.json"
+    if seedance_task_results_path.exists():
+        seedance_task_results = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "seedance_task_results_schema",
+            "seedance_tasks/results.json",
+            SeedanceTaskResults.model_validate,
+        )
+        task_results_missing = seedance_task_results is None
+        if seedance_task_results is not None:
+            submissions_for_results = None
+            if not Path(seedance_task_results.submissions_path).exists():
+                task_results_missing = True
+                issues.append(_quality_issue("Seedance task submissions missing for results", seedance_task_results.submissions_path))
+            else:
+                try:
+                    submissions_for_results = SeedanceTaskBatch.model_validate(read_json(seedance_task_results.submissions_path))
+                except Exception as exc:
+                    task_results_missing = True
+                    issues.append(
+                        _quality_issue(
+                            f"Seedance task submissions for results validation failed: {exc}",
+                            seedance_task_results.submissions_path,
+                        )
+                    )
+            submit_plan_path = Path(seedance_task_results.submit_plan_path)
+            if not submit_plan_path.exists():
+                task_results_missing = True
+                issues.append(_quality_issue("Seedance submit plan missing for task results", seedance_task_results.submit_plan_path))
+            else:
+                current_submit_plan_fingerprint = submit_plan_fingerprint(submit_plan_path)
+                if seedance_task_results.submit_plan_fingerprint != current_submit_plan_fingerprint:
+                    task_results_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "Seedance task results are stale; rerun submit-seedance-tasks and poll-seedance-tasks",
+                            "seedance_tasks/results.json",
+                        )
+                    )
+            for result in seedance_task_results.results:
+                for label, artifact_path in [
+                    ("Seedance mock output missing", result.output_path),
+                    ("Seedance mock poll response missing", result.poll_response_path),
+                    ("Seedance mock download response missing", result.download_response_path),
+                ]:
+                    if not Path(artifact_path).exists():
+                        task_results_missing = True
+                        issues.append(_quality_issue(label, artifact_path))
+                for artifact_path in [result.poll_response_path, result.download_response_path]:
+                    path = Path(artifact_path)
+                    if path.exists() and _artifact_has_sensitive_string(path):
+                        task_results_missing = True
+                        issues.append(_quality_issue("Seedance task artifact contains sensitive string", artifact_path))
+            if submissions_for_results is not None:
+                submission_task_ids = {task.task_id for task in submissions_for_results.tasks}
+                result_task_ids = {result.task_id for result in seedance_task_results.results}
+                if submission_task_ids != result_task_ids:
+                    task_results_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "Seedance task results differ from submissions",
+                            "seedance_tasks/results.json",
+                        )
+                    )
+            clips_path = story_dir / "videos" / "seedance_clips.json"
+            if not clips_path.exists():
+                task_results_missing = True
+                issues.append(_quality_issue("Seedance clips manifest missing", clips_path.as_posix()))
+            else:
+                try:
+                    seedance_clips = [VideoClip.model_validate(item) for item in read_json(clips_path)]
+                    clip_by_scene = {clip.scene_id: clip for clip in seedance_clips}
+                    if len(seedance_clips) != len(seedance_task_results.results):
+                        task_results_missing = True
+                        issues.append(_quality_issue("Seedance clips manifest count differs from results", clips_path.as_posix()))
+                    for result in seedance_task_results.results:
+                        clip = clip_by_scene.get(result.scene_id)
+                        if clip is None or clip.path != result.output_path or clip.provider != "seedance_mock":
+                            task_results_missing = True
+                            issues.append(_quality_issue("Seedance clip differs from task result", result.scene_id))
+                    if _artifact_has_sensitive_string(clips_path):
+                        task_results_missing = True
+                        issues.append(_quality_issue("Seedance clips manifest contains sensitive string", clips_path.as_posix()))
+                except Exception as exc:
+                    task_results_missing = True
+                    issues.append(_quality_issue(f"Seedance clips manifest validation failed: {exc}", clips_path.as_posix()))
+            if _artifact_has_sensitive_string(seedance_task_results_path):
+                task_results_missing = True
+                issues.append(
+                    _quality_issue(
+                        "Seedance task results contain sensitive string",
+                        "seedance_tasks/results.json",
+                    )
+                )
+        checks["seedance_task_results_files"] = "failed" if task_results_missing else "passed"
+    else:
+        checks["seedance_task_results_schema"] = "skipped"
+        checks["seedance_task_results_files"] = "skipped"
 
     review_video_plan = None
     review_video_plan_path = story_dir / "09_review_video_plan.json"
@@ -1190,6 +1371,38 @@ def prepare_seedance_submit_command(
     )
     info(f"wrote {output}")
     warn(plan.stop_reason)
+
+
+@app.command(name="submit-seedance-tasks")
+def submit_seedance_tasks_command(
+    story_dir: Path,
+    provider: str = typer.Option("mock", "--provider"),
+) -> None:
+    if provider != "mock":
+        raise typer.BadParameter("real Seedance task submission is not implemented; use --provider mock")
+    try:
+        batch = submit_seedance_tasks_mock(story_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    info(f"submitted {batch.task_count} mock Seedance tasks")
+    info(f"wrote {story_dir / 'seedance_tasks' / 'submissions.json'}")
+    warn("mock lifecycle only; no real Seedance API call was made")
+
+
+@app.command(name="poll-seedance-tasks")
+def poll_seedance_tasks_command(
+    story_dir: Path,
+    provider: str = typer.Option("mock", "--provider"),
+) -> None:
+    if provider != "mock":
+        raise typer.BadParameter("real Seedance task polling is not implemented; use --provider mock")
+    try:
+        results = poll_seedance_tasks_mock(story_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    info(f"completed {results.task_count} mock Seedance tasks")
+    info(f"wrote {story_dir / 'seedance_tasks' / 'results.json'}")
+    warn("mock lifecycle only; no real Seedance API call was made")
 
 
 @app.command(name="comfyui-smoke-check")

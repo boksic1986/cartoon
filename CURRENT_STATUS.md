@@ -1,4 +1,15 @@
 # 当前状态
+状态：Phase 2.8 Seedance mock 任务生命周期开发中。
+
+## 2026-05-03 Phase 2.8 Seedance mock 任务生命周期
+
+- 当前分支：`codex/phase-2.8-seedance-mock-lifecycle`。
+- 新增 `submit-seedance-tasks outputs\shou-zhu-dai-tu --provider mock`，只生成本地 mock submissions 和逐镜 submit request/response JSON。
+- 新增 `poll-seedance-tasks outputs\shou-zhu-dai-tu --provider mock`，只生成本地 mock poll/download response、占位视频文本和 `videos/seedance_clips.json`。
+- `--provider seedance` 当前仍会拒绝，避免触发真实外部视频任务。
+- `quality-check` 在 task 产物存在时校验 schema、提交计划指纹、task/result 一致性、clips manifest 和本地输出文件。
+- task artifacts 与 clips manifest 会被扫描敏感字符串，避免凭证、敏感请求头或账号标识进入 JSON。
+
 状态：Phase 2.7 Seedance 提交计划与强确认骨架开发中。
 
 ## 2026-05-03 Phase 2.7 Seedance 提交计划与强确认骨架

@@ -21,6 +21,7 @@
 - `src/idiom_video/prompt_builder.py`：分镜生成图片提示词和图片任务。
 - `src/idiom_video/real_image_preflight.py`：真实图片生成前门禁报告。
 - `src/idiom_video/real_video_preflight.py`：真实视频生成前门禁报告。
+- `src/idiom_video/seedance_lifecycle.py`：Seedance mock 任务提交、轮询和下载占位生命周期。
 - `src/idiom_video/seedance_submit.py`：真实 Seedance 提交前的离线提交计划和强确认校验。
 - `src/idiom_video/voice_builder.py`：分镜 speech cue 生成配音、音频对齐和口型任务。
 - `src/idiom_video/review_packet.py`：生成统一人工审核包。
@@ -53,6 +54,7 @@
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_submit/`：Seedance 提交计划，默认被 git 忽略。
+- `outputs/{idiom_slug}/seedance_tasks/`：Seedance mock 任务提交、轮询和下载响应账本，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/review_mock_track.wav`：本地审片视频的 mock 节奏占位音轨，默认被 git 忽略。
 - `outputs/{idiom_slug}/lipsync/`：mock 口型任务占位结果，默认被 git 忽略。

@@ -95,6 +95,8 @@
 - 真实视频生成前应先运行 `estimate-video-cost`，确认 `quality_reports/seedance_cost_estimate.json` 的单价、来源 URL、复核日期、重试缓冲和总费用。
 - 真实视频生成前应先运行 `prepare-seedance-submit`，确认 `seedance_submit/submit_plan.json` 的预算上限、费用估算、首帧路径、request preview 和停止线。
 - `seedance_submit/submit_plan.json` 不应包含 API key、请求密钥、账号标识或敏感请求头。
+- 如存在 `seedance_tasks/submissions.json` 或 `seedance_tasks/results.json`，应确认它们仍为 mock 生命周期产物，且 task id、scene、输出路径和 `videos/seedance_clips.json` 对齐。
+- `seedance_tasks/*.json` 和 `videos/seedance_clips.json` 不应包含 API key、请求密钥、账号标识或敏感请求头。
 - 任何 dry-run 产物生成或变更后，都应重新运行 `build-review-packet`，再进行 `quality-check` 或
   `real-image-preflight`。
 
@@ -111,3 +113,5 @@
 - `05_video_jobs.json` 中的 `scene_id` 和 `job_id` 应保持唯一；重复项应被视为需要重新整理的视频任务。
 - `real_video_preflight.json` 的产物指纹应与当前视频任务、Seedance dry-run、运动审核、
   审核包及其引用文件一致；`quality-check` 应能发现旧指纹。
+- 若修改了 `seedance_submit/submit_plan.json`，必须重新运行 `submit-seedance-tasks` 和
+  `poll-seedance-tasks`；`quality-check` 应能发现旧 task 指纹。

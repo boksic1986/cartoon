@@ -21,6 +21,10 @@ from idiom_video.schemas import (
     SeedanceDryRunJob,
     SeedanceSubmitPlan,
     SeedanceSubmitPlanItem,
+    SeedanceTaskBatch,
+    SeedanceTaskRecord,
+    SeedanceTaskResult,
+    SeedanceTaskResults,
     Storyboard,
     StoryboardScene,
     VideoMotionReview,
@@ -398,3 +402,62 @@ def test_seedance_submit_plan_schema_is_strict():
     item_payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         SeedanceSubmitPlanItem.model_validate(item_payload)
+
+
+def test_seedance_task_lifecycle_schemas_are_strict():
+    task = SeedanceTaskRecord(
+        task_id="mock_scene_01",
+        source_job_id="video_scene_01",
+        scene_id="scene_01",
+        image_path="outputs/story/images_approved/scene_01.png",
+        prompt="slow push in",
+        duration_seconds=5,
+        intended_output_path="outputs/story/videos/scene_01.mp4",
+        request_preview_path="outputs/story/videos/scene_01.seedance_dry_run.json",
+        submit_request_path="outputs/story/seedance_tasks/scene_01.submit_request.json",
+        submit_response_path="outputs/story/seedance_tasks/scene_01.submit_response.json",
+        status="submitted",
+    )
+    batch = SeedanceTaskBatch(
+        ok=True,
+        provider="seedance",
+        client="mock",
+        dry_run=True,
+        submit_plan_path="outputs/story/seedance_submit/submit_plan.json",
+        submit_plan_fingerprint="sha256:abc123",
+        task_count=1,
+        tasks=[task],
+        next_step="MOCK_POLL_SEEDANCE_TASKS",
+    )
+    result = SeedanceTaskResult(
+        task_id="mock_scene_01",
+        source_job_id="video_scene_01",
+        scene_id="scene_01",
+        status="succeeded",
+        output_path="outputs/story/videos/scene_01.seedance_mock.txt",
+        poll_response_path="outputs/story/seedance_tasks/scene_01.poll_response.json",
+        download_response_path="outputs/story/seedance_tasks/scene_01.download_response.json",
+        duration_seconds=5,
+        provider="seedance_mock",
+    )
+    results = SeedanceTaskResults(
+        ok=True,
+        provider="seedance",
+        client="mock",
+        dry_run=True,
+        submit_plan_path="outputs/story/seedance_submit/submit_plan.json",
+        submit_plan_fingerprint="sha256:abc123",
+        submissions_path="outputs/story/seedance_tasks/submissions.json",
+        task_count=1,
+        results=[result],
+        next_step="MOCK_SEEDANCE_COMPLETE",
+    )
+
+    assert batch.tasks[0].status == "submitted"
+    assert results.results[0].status == "succeeded"
+
+    for model in (task, batch, result, results):
+        payload = model.model_dump(mode="json")
+        payload["unexpected"] = "reject"
+        with pytest.raises(ValidationError):
+            type(model).model_validate(payload)
