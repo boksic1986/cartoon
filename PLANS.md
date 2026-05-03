@@ -1,5 +1,20 @@
 # 项目计划
 
+## 当前阶段：Phase 2.10 Seedance 真实 transport 与单镜头试跑门禁
+
+目标：
+1. 在保留 mock / mock HTTP 路径的基础上，新增真实 Seedance transport，使用 BytePlus ModelArk 数据面 base URL，API key 只从环境变量读取，不写入代码、日志或 JSON 产物。
+2. `submit-seedance-tasks --provider seedance --execute-real --confirm-external-call` 才允许进入真实提交路径；默认 `--max-real-tasks 1`，先只提交一个镜头控制费用。
+3. 图生视频必须通过 `--image-url-map` 或 `--image-base-url` 提供公网首帧 URL；没有公网 URL 时默认阻断，只有显式 `--allow-text-only` 才可做文生视频接口试跑。
+4. `poll-seedance-tasks --provider seedance --execute-real --confirm-external-call` 轮询真实任务，成功后下载到 `videos/*.seedance_real.mp4`，但不把临时远程下载链接写入 JSON。
+5. `quality-check` 同时校验 mock、mock HTTP 和 real 生命周期产物，继续扫描敏感字符串、校验 request/response schema、task client 一致性和 clips manifest。
+
+停止线：
+
+1. 不批量提交全部 10 个镜头，除非人工明确提高 `--max-real-tasks` 并确认预算。
+2. 不把 provider 凭证、鉴权请求头、账号标识或临时远程下载链接写入产物。
+3. 如果本地没有 `ARK_API_KEY` / `SEEDANCE_API_KEY` 或首帧公网 URL，真实图生视频调用会停在门禁处。
+
 ## 当前阶段：Phase 2.9 Seedance mock HTTP 客户端外壳
 
 目标：

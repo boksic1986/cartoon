@@ -97,7 +97,11 @@
 - `seedance_submit/submit_plan.json` 不应包含 API key、请求密钥、账号标识或敏感请求头。
 - 如存在 `seedance_tasks/submissions.json` 或 `seedance_tasks/results.json`，应确认它们仍为 mock 生命周期产物，且 task id、scene、输出路径和 `videos/seedance_clips.json` 对齐。
 - 如使用 `--provider seedance --dry-run --confirm-external-call`，应确认产物中的 `client` 为 `mock_http`，且所有 submit/poll/download request/response 都是本地合同演练文件。
-- `--provider seedance` 不带 `--dry-run` 时应被拒绝；当前阶段不应出现真实 endpoint、鉴权、请求签名或真实下载 URL。
+- `--provider seedance` 不带 `--dry-run` 且不带 `--execute-real` 时应被拒绝；真实 endpoint 只允许存在于 transport 配置中，不应写入产物 JSON。
+- 真实调用必须显式使用 `--execute-real --confirm-external-call`，默认 `--max-real-tasks 1`，不要一次性提交全部镜头。
+- 图生视频真实调用前应确认 `--image-url-map` 或 `--image-base-url` 指向可访问的公网首帧 URL；缺少 URL 时不得误用本地路径。
+- 如使用 `--allow-text-only`，应记录这是文生视频接口试跑，不代表已按审核首帧完成图生视频。
+- 真实下载完成后，确认 `videos/*.seedance_real.mp4` 存在，且 JSON 产物不包含 provider 凭证、鉴权请求头或临时远程下载链接。
 - `seedance_tasks/*.json` 和 `videos/seedance_clips.json` 不应包含 API key、请求密钥、账号标识或敏感请求头。
 - 任何 dry-run 产物生成或变更后，都应重新运行 `build-review-packet`，再进行 `quality-check` 或
   `real-image-preflight`。
