@@ -43,6 +43,17 @@ def _load_list(path: Path, validator):
     return [validator(item) for item in read_json(path)]
 
 
+def _unique_paths(paths: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        unique.append(path)
+    return unique
+
+
 def _packet_item_by_type_scene(packet: ReviewPacket, item_type: str, scene_id: str) -> ReviewPacketItem | None:
     for item in packet.items:
         if item.item_type == item_type and item.scene_id == scene_id:
@@ -140,6 +151,7 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
             comfyui_job = comfyui_dry_run_by_scene.get(scene.scene_id)
             if comfyui_job is not None:
                 image_paths.append(comfyui_job.request_preview_path)
+        image_paths = _unique_paths(image_paths)
         items.append(
             ReviewPacketItem(
                 item_id=f"image_{scene.scene_id}",
@@ -159,6 +171,7 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
             seedance_job = seedance_dry_run_by_scene.get(scene.scene_id)
             if seedance_job is not None:
                 video_paths.append(seedance_job.request_preview_path)
+        video_paths = _unique_paths(video_paths)
         items.append(
             ReviewPacketItem(
                 item_id=f"video_{scene.scene_id}",
