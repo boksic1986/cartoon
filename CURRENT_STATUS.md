@@ -1,4 +1,15 @@
 # 当前状态
+状态：Phase 2.7 Seedance 提交计划与强确认骨架开发中。
+
+## 2026-05-03 Phase 2.7 Seedance 提交计划与强确认骨架
+
+- 当前分支：`codex/phase-2.7-seedance-submit-gate`。
+- 新增 `prepare-seedance-submit outputs\shou-zhu-dai-tu --max-cost <amount> --confirm-external-call`。
+- 该命令只生成 `seedance_submit/submit_plan.json`，不会提交真实 Seedance 任务，不轮询，不下载真实视频。
+- `--confirm-external-call` 是人工理解下一阶段可能外部调用的确认；当前阶段即使传入 `--execute-real` 也会被拒绝。
+- 提交计划不写入 API key、请求密钥、账号标识或敏感请求头。
+- `quality-check` 会在提交计划存在时校验 schema、费用上限和当前真实视频门禁指纹一致性。
+
 状态：Phase 2.6 真实视频费用门禁开发中。
 
 ## 2026-05-03 Phase 2.6 真实视频费用门禁

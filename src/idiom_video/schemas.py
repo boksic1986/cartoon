@@ -385,6 +385,46 @@ class SeedanceCostEstimate(StrictSchemaModel):
     notes: list[str] = Field(default_factory=list)
 
 
+SeedanceSubmitStatus = Literal["ready"]
+
+
+class SeedanceSubmitPlanItem(StrictSchemaModel):
+    source_job_id: str
+    scene_id: str
+    image_path: str
+    prompt: str
+    duration_seconds: float = Field(gt=0, le=10)
+    intended_output_path: str
+    request_preview_path: str
+    status: SeedanceSubmitStatus = "ready"
+
+
+class SeedanceSubmitPlan(StrictSchemaModel):
+    ok: Literal[True]
+    provider: Literal["seedance"] = "seedance"
+    dry_run: Literal[True] = True
+    execute_real_requested: Literal[False] = False
+    external_call_confirmed: Literal[True]
+    story_dir: str
+    preflight_report_path: str
+    preflight_artifact_fingerprint: str
+    cost_estimate_path: str
+    currency: CurrencyCode
+    estimated_total_cost: float = Field(ge=0)
+    max_cost: float = Field(gt=0)
+    item_count: int = Field(gt=0)
+    items: list[SeedanceSubmitPlanItem]
+    next_step: Literal["STOP_BEFORE_REAL_SEEDANCE_SUBMIT"]
+    stop_reason: str
+    notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_item_count(self) -> SeedanceSubmitPlan:
+        if self.item_count != len(self.items):
+            raise ValueError("item_count must match items length")
+        return self
+
+
 class VoiceJob(StrictSchemaModel):
     job_id: str
     cue_id: str

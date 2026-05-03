@@ -15,6 +15,21 @@
 1. 本阶段仍不实现真实 Seedance 提交、轮询或下载。
 2. 每次真实提交前必须由人工确认当前官方价格、费用上限和是否允许外部调用。
 
+## 当前阶段：Phase 2.7 Seedance 提交计划与强确认骨架
+
+目标：
+
+1. 新增 `prepare-seedance-submit`，读取已通过的 `real_video_preflight.json`、费用报告和 Seedance dry-run，生成可人工审核的 `seedance_submit/submit_plan.json`。
+2. 命令必须显式传入 `--confirm-external-call` 和 `--max-cost`；费用超过预算时阻断。
+3. 提交计划不得包含真实 API key、请求密钥、账号标识或敏感请求头。
+4. 即使传入 `--execute-real`，当前阶段也必须拒绝真实提交，继续停在真实 Seedance API 调用前。
+5. `quality-check` 在提交计划存在时校验 schema、preflight 指纹和费用上限，防止沿用旧提交计划。
+
+停止线：
+
+1. 本阶段只生成提交计划，不提交任务、不轮询、不下载真实视频。
+2. 下一阶段若实现真实 provider，必须先补 mock HTTP 测试、任务状态 schema、失败重试策略和显式人工确认。
+
 ## MVP 目标
 
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、
