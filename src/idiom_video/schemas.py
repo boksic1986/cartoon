@@ -425,7 +425,66 @@ class SeedanceSubmitPlan(StrictSchemaModel):
         return self
 
 
+SeedanceClientStatus = Literal["submitted", "succeeded", "failed"]
+
+
+class SeedanceClientSubmitRequest(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    source_job_id: str
+    scene_id: str
+    image_path: str
+    prompt: str
+    duration_seconds: float = Field(gt=0, le=10)
+    intended_output_path: str
+
+
+class SeedanceClientSubmitResponse(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    task_id: str
+    scene_id: str
+    status: Literal["submitted"]
+    retry_after_seconds: int = Field(ge=0)
+
+
+class SeedanceClientPollRequest(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    task_id: str
+    scene_id: str
+
+
+class SeedanceClientPollResponse(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    task_id: str
+    scene_id: str
+    status: Literal["succeeded"]
+    progress_percent: int = Field(ge=0, le=100)
+
+
+class SeedanceClientDownloadRequest(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    task_id: str
+    scene_id: str
+
+
+class SeedanceClientDownloadResponse(StrictSchemaModel):
+    client: Literal["mock_http"] = "mock_http"
+    dry_run: Literal[True] = True
+    task_id: str
+    scene_id: str
+    status: Literal["downloaded"]
+    output_path: str
+
+
 SeedanceTaskStatus = Literal["submitted", "succeeded", "failed"]
+SeedanceTaskClient = Literal["mock", "mock_http"]
+SeedanceTaskNextStep = Literal["MOCK_POLL_SEEDANCE_TASKS", "MOCK_HTTP_POLL_SEEDANCE_TASKS"]
+SeedanceTaskResultNextStep = Literal["MOCK_SEEDANCE_COMPLETE", "MOCK_HTTP_SEEDANCE_COMPLETE"]
+SeedanceTaskResultProvider = Literal["seedance_mock", "seedance_mock_http"]
 
 
 class SeedanceTaskRecord(StrictSchemaModel):
@@ -445,13 +504,13 @@ class SeedanceTaskRecord(StrictSchemaModel):
 class SeedanceTaskBatch(StrictSchemaModel):
     ok: Literal[True]
     provider: Literal["seedance"] = "seedance"
-    client: Literal["mock"] = "mock"
+    client: SeedanceTaskClient = "mock"
     dry_run: Literal[True] = True
     submit_plan_path: str
     submit_plan_fingerprint: str
     task_count: int = Field(gt=0)
     tasks: list[SeedanceTaskRecord]
-    next_step: Literal["MOCK_POLL_SEEDANCE_TASKS"]
+    next_step: SeedanceTaskNextStep
     notes: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -467,23 +526,25 @@ class SeedanceTaskResult(StrictSchemaModel):
     scene_id: str
     status: Literal["succeeded"]
     output_path: str
+    poll_request_path: str | None = None
     poll_response_path: str
+    download_request_path: str | None = None
     download_response_path: str
     duration_seconds: float = Field(gt=0, le=10)
-    provider: Literal["seedance_mock"] = "seedance_mock"
+    provider: SeedanceTaskResultProvider = "seedance_mock"
 
 
 class SeedanceTaskResults(StrictSchemaModel):
     ok: Literal[True]
     provider: Literal["seedance"] = "seedance"
-    client: Literal["mock"] = "mock"
+    client: SeedanceTaskClient = "mock"
     dry_run: Literal[True] = True
     submit_plan_path: str
     submit_plan_fingerprint: str
     submissions_path: str
     task_count: int = Field(gt=0)
     results: list[SeedanceTaskResult]
-    next_step: Literal["MOCK_SEEDANCE_COMPLETE"]
+    next_step: SeedanceTaskResultNextStep
     notes: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")

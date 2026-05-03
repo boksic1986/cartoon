@@ -41,6 +41,12 @@ from idiom_video.schemas import (
     ReviewVideoPlan,
     Script,
     SeedanceCostEstimate,
+    SeedanceClientDownloadRequest,
+    SeedanceClientDownloadResponse,
+    SeedanceClientPollRequest,
+    SeedanceClientPollResponse,
+    SeedanceClientSubmitRequest,
+    SeedanceClientSubmitResponse,
     SeedanceDryRunJob,
     SeedanceSubmitPlan,
     SeedanceTaskBatch,
@@ -54,7 +60,13 @@ from idiom_video.schemas import (
 )
 from idiom_video.script_writer import build_script
 from idiom_video.seedance_cost import estimate_seedance_cost, video_jobs_fingerprint
-from idiom_video.seedance_lifecycle import poll_seedance_tasks_mock, submit_plan_fingerprint, submit_seedance_tasks_mock
+from idiom_video.seedance_lifecycle import (
+    poll_seedance_tasks_mock,
+    poll_seedance_tasks_mock_http,
+    submit_plan_fingerprint,
+    submit_seedance_tasks_mock,
+    submit_seedance_tasks_mock_http,
+)
 from idiom_video.seedance_submit import SENSITIVE_MARKERS, build_seedance_submit_plan, validate_seedance_submit_plan_current
 from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
@@ -147,6 +159,14 @@ def _artifact_has_sensitive_string(path: Path) -> bool:
     except Exception:
         text = path.read_text(encoding="utf-8", errors="ignore")
         return _contains_sensitive_string(text)
+
+
+def _validate_seedance_mock_http_artifact(path: str, validator: Callable[[Any], Any]) -> str | None:
+    try:
+        validator(read_json(Path(path)))
+    except Exception as exc:
+        return f"Seedance mock HTTP artifact schema validation failed: {exc}"
+    return None
 
 
 def _validate_json_artifact(
@@ -655,6 +675,17 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                     if path.exists() and _artifact_has_sensitive_string(path):
                         task_submission_missing = True
                         issues.append(_quality_issue("Seedance task artifact contains sensitive string", artifact_path))
+                if seedance_task_batch.client == "mock_http":
+                    for artifact_path, validator in [
+                        (task.submit_request_path, SeedanceClientSubmitRequest.model_validate),
+                        (task.submit_response_path, SeedanceClientSubmitResponse.model_validate),
+                    ]:
+                        path = Path(artifact_path)
+                        if path.exists():
+                            schema_issue = _validate_seedance_mock_http_artifact(artifact_path, validator)
+                            if schema_issue is not None:
+                                task_submission_missing = True
+                                issues.append(_quality_issue(schema_issue, artifact_path))
             if _artifact_has_sensitive_string(seedance_task_submissions_path):
                 task_submission_missing = True
                 issues.append(
@@ -711,20 +742,56 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                         )
                     )
             for result in seedance_task_results.results:
-                for label, artifact_path in [
+                result_artifacts = [
                     ("Seedance mock output missing", result.output_path),
                     ("Seedance mock poll response missing", result.poll_response_path),
                     ("Seedance mock download response missing", result.download_response_path),
-                ]:
+                ]
+                if result.poll_request_path is not None:
+                    result_artifacts.append(("Seedance mock poll request missing", result.poll_request_path))
+                if result.download_request_path is not None:
+                    result_artifacts.append(("Seedance mock download request missing", result.download_request_path))
+                for label, artifact_path in result_artifacts:
                     if not Path(artifact_path).exists():
                         task_results_missing = True
                         issues.append(_quality_issue(label, artifact_path))
-                for artifact_path in [result.poll_response_path, result.download_response_path]:
+                artifact_paths = [result.poll_response_path, result.download_response_path]
+                if result.poll_request_path is not None:
+                    artifact_paths.append(result.poll_request_path)
+                if result.download_request_path is not None:
+                    artifact_paths.append(result.download_request_path)
+                for artifact_path in artifact_paths:
                     path = Path(artifact_path)
                     if path.exists() and _artifact_has_sensitive_string(path):
                         task_results_missing = True
                         issues.append(_quality_issue("Seedance task artifact contains sensitive string", artifact_path))
+                if seedance_task_results.client == "mock_http":
+                    mock_http_validators: list[tuple[str | None, Callable[[Any], Any]]] = [
+                        (result.poll_request_path, SeedanceClientPollRequest.model_validate),
+                        (result.poll_response_path, SeedanceClientPollResponse.model_validate),
+                        (result.download_request_path, SeedanceClientDownloadRequest.model_validate),
+                        (result.download_response_path, SeedanceClientDownloadResponse.model_validate),
+                    ]
+                    for artifact_path, validator in mock_http_validators:
+                        if artifact_path is None:
+                            task_results_missing = True
+                            issues.append(_quality_issue("Seedance mock HTTP request path missing", result.scene_id))
+                            continue
+                        path = Path(artifact_path)
+                        if path.exists():
+                            schema_issue = _validate_seedance_mock_http_artifact(artifact_path, validator)
+                            if schema_issue is not None:
+                                task_results_missing = True
+                                issues.append(_quality_issue(schema_issue, artifact_path))
             if submissions_for_results is not None:
+                if submissions_for_results.client != seedance_task_results.client:
+                    task_results_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "Seedance task result client differs from submissions",
+                            "seedance_tasks/results.json",
+                        )
+                    )
                 submission_task_ids = {task.task_id for task in submissions_for_results.tasks}
                 result_task_ids = {result.task_id for result in seedance_task_results.results}
                 if submission_task_ids != result_task_ids:
@@ -748,7 +815,7 @@ def _run_full_quality_check(story_dir: Path) -> dict:
                         issues.append(_quality_issue("Seedance clips manifest count differs from results", clips_path.as_posix()))
                     for result in seedance_task_results.results:
                         clip = clip_by_scene.get(result.scene_id)
-                        if clip is None or clip.path != result.output_path or clip.provider != "seedance_mock":
+                        if clip is None or clip.path != result.output_path or clip.provider != result.provider:
                             task_results_missing = True
                             issues.append(_quality_issue("Seedance clip differs from task result", result.scene_id))
                     if _artifact_has_sensitive_string(clips_path):
@@ -1377,32 +1444,54 @@ def prepare_seedance_submit_command(
 def submit_seedance_tasks_command(
     story_dir: Path,
     provider: str = typer.Option("mock", "--provider"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    confirm_external_call: bool = typer.Option(False, "--confirm-external-call"),
 ) -> None:
-    if provider != "mock":
-        raise typer.BadParameter("real Seedance task submission is not implemented; use --provider mock")
     try:
-        batch = submit_seedance_tasks_mock(story_dir)
+        if provider == "mock":
+            batch = submit_seedance_tasks_mock(story_dir)
+            lifecycle_label = "mock"
+        elif provider == "seedance":
+            if not dry_run:
+                raise typer.BadParameter("real Seedance task submission is not implemented; use --dry-run")
+            if not confirm_external_call:
+                raise typer.BadParameter("--confirm-external-call is required for Seedance provider dry-run")
+            batch = submit_seedance_tasks_mock_http(story_dir)
+            lifecycle_label = "mock HTTP contract"
+        else:
+            raise typer.BadParameter("supported Seedance task providers: mock, seedance")
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
-    info(f"submitted {batch.task_count} mock Seedance tasks")
+    info(f"submitted {batch.task_count} {lifecycle_label} Seedance tasks")
     info(f"wrote {story_dir / 'seedance_tasks' / 'submissions.json'}")
-    warn("mock lifecycle only; no real Seedance API call was made")
+    warn("dry-run lifecycle only; no real Seedance API call was made")
 
 
 @app.command(name="poll-seedance-tasks")
 def poll_seedance_tasks_command(
     story_dir: Path,
     provider: str = typer.Option("mock", "--provider"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    confirm_external_call: bool = typer.Option(False, "--confirm-external-call"),
 ) -> None:
-    if provider != "mock":
-        raise typer.BadParameter("real Seedance task polling is not implemented; use --provider mock")
     try:
-        results = poll_seedance_tasks_mock(story_dir)
+        if provider == "mock":
+            results = poll_seedance_tasks_mock(story_dir)
+            lifecycle_label = "mock"
+        elif provider == "seedance":
+            if not dry_run:
+                raise typer.BadParameter("real Seedance task polling is not implemented; use --dry-run")
+            if not confirm_external_call:
+                raise typer.BadParameter("--confirm-external-call is required for Seedance provider dry-run")
+            results = poll_seedance_tasks_mock_http(story_dir)
+            lifecycle_label = "mock HTTP contract"
+        else:
+            raise typer.BadParameter("supported Seedance task providers: mock, seedance")
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
-    info(f"completed {results.task_count} mock Seedance tasks")
+    info(f"completed {results.task_count} {lifecycle_label} Seedance tasks")
     info(f"wrote {story_dir / 'seedance_tasks' / 'results.json'}")
-    warn("mock lifecycle only; no real Seedance API call was made")
+    warn("dry-run lifecycle only; no real Seedance API call was made")
 
 
 @app.command(name="comfyui-smoke-check")

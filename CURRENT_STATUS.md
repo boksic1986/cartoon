@@ -1,5 +1,16 @@
 # 当前状态
-状态：Phase 2.8 Seedance mock 任务生命周期开发中。
+状态：Phase 2.9 Seedance mock HTTP 客户端外壳开发中。
+
+## 2026-05-03 Phase 2.9 Seedance mock HTTP 客户端外壳
+
+- 当前分支：`codex/phase-2.9-seedance-client-shell`。
+- 新增 `SeedanceClientSubmitRequest`、`SeedanceClientSubmitResponse`、`SeedanceClientPollRequest`、`SeedanceClientPollResponse`、`SeedanceClientDownloadRequest` 和 `SeedanceClientDownloadResponse` schema，用于约束未来真实 provider 的 request/response 合同。
+- 新增 `src/idiom_video/providers/seedance_client.py`，包含 `SeedanceApiClient`、本地 `MockSeedanceHttpTransport` 和默认禁用的真实网络 transport 占位。
+- `submit-seedance-tasks --provider seedance --dry-run --confirm-external-call` 会写出本地 mock HTTP submit request/response 和 `seedance_tasks/submissions.json`，不会读取 API key，也不会发起网络请求。
+- `poll-seedance-tasks --provider seedance --dry-run --confirm-external-call` 会写出本地 mock HTTP poll/download request/response、占位视频文本和 `videos/seedance_clips.json`。
+- `quality-check` 已扩展为同时校验 mock 与 mock HTTP 生命周期产物，并扫描新 request/response 中的敏感字符串。
+
+停止线：不带 `--dry-run` 的 `--provider seedance` 仍会拒绝；当前阶段不实现真实 endpoint、鉴权、网络提交、真实轮询、真实下载或真实计费回填。
 
 ## 2026-05-03 Phase 2.8 Seedance mock 任务生命周期
 

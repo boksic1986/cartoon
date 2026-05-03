@@ -1,5 +1,19 @@
 # 项目计划
 
+## 当前阶段：Phase 2.9 Seedance mock HTTP 客户端外壳
+
+目标：
+1. 新增 Seedance client contract schema：submit、poll、download request/response 都是 Pydantic JSON，字段中不包含 endpoint、请求头、credential、account 或真实下载 URL。
+2. 新增 `SeedanceApiClient`、`MockSeedanceHttpTransport` 和 `DisabledSeedanceNetworkTransport`：默认真实网络 transport 仍禁用，mock HTTP transport 只做本地确定性响应。
+3. `submit-seedance-tasks --provider seedance --dry-run --confirm-external-call` 走 mock HTTP contract，写出逐镜 submit request/response 和 `seedance_tasks/submissions.json`，不读取 API key，不发网络请求。
+4. `poll-seedance-tasks --provider seedance --dry-run --confirm-external-call` 走 mock HTTP contract，写出 poll/download request/response、占位视频文本和 `videos/seedance_clips.json`。
+5. `quality-check` 需要同时校验 mock 和 mock HTTP 生命周期产物，检查 request/response、占位输出、clips manifest、提交计划指纹和敏感字符串扫描。
+
+停止线：
+
+1. 不实现真实 Seedance endpoint、鉴权、请求签名、网络提交、真实轮询、真实下载或真实计费回填。
+2. `--provider seedance` 不带 `--dry-run` 时必须拒绝；带 `--dry-run` 也必须显式传入 `--confirm-external-call`，用于提醒这已经进入真实 provider 路径的合同演练。
+
 ## 当前阶段：Phase 2.6 真实视频费用门禁
 
 目标：
