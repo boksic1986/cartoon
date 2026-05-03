@@ -18,6 +18,8 @@ from idiom_video.schemas import (
     SeedanceDryRunJob,
     Storyboard,
     StoryboardScene,
+    VideoMotionReview,
+    VideoMotionReviewItem,
     VoiceJob,
 )
 from idiom_video.utils.json_io import read_json
@@ -247,3 +249,45 @@ def test_real_image_preflight_report_schema_is_strict():
 
     with pytest.raises(ValidationError):
         RealImagePreflightIssue.model_validate({"message": "x", "unexpected": "reject"})
+
+
+def test_video_motion_review_schema_is_strict():
+    item = VideoMotionReviewItem(
+        item_id="motion_scene_01",
+        scene_id="scene_01",
+        title="清晨耕田 运动审核",
+        image_path="outputs/story/images_approved/scene_01.png",
+        request_preview_path="outputs/story/videos/scene_01.seedance_dry_run.json",
+        duration_seconds=5,
+        motion_prompt="温和推镜，阿木抬头擦汗，固定背景连续性保持一致。",
+        continuity_prompt_present=True,
+        checklist=["首帧图片存在", "运动提示词保留固定背景连续性"],
+        status="approved",
+        notes="自动技术审核通过。",
+    )
+    review = VideoMotionReview(
+        idiom_slug="shou-zhu-dai-tu",
+        title="守株待兔",
+        story_dir="outputs/story",
+        seedance_dry_run_jobs_path="outputs/story/seedance_dry_run/jobs.json",
+        auto=True,
+        items=[item],
+        summary={"approved": 1, "pending": 0, "rejected": 0},
+    )
+
+    assert review.items[0].continuity_prompt_present is True
+
+    payload = review.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        VideoMotionReview.model_validate(payload)
+
+    item_payload = item.model_dump(mode="json")
+    item_payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        VideoMotionReviewItem.model_validate(item_payload)
+
+    item_payload = item.model_dump(mode="json")
+    item_payload["motion_prompt"] = "   "
+    with pytest.raises(ValidationError):
+        VideoMotionReviewItem.model_validate(item_payload)

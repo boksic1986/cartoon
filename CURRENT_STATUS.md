@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 2.1 守株待兔 10 镜头视觉方案收束中。
+状态：Phase 2.2 Seedance 运动提示词审核开发中。
 
 ## Git
 
-- 分支：`codex/phase-2-shou-zhu-comedy-10frames`
+- 分支：`codex/phase-2.2-video-motion-review`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`011496a Merge pull request #8 from boksic1986/codex/phase-1.9-real-image-preflight`
+- 已合并功能提交：`8eb5e47 Merge pull request #10 from boksic1986/codex/phase-2-shou-zhu-comedy-10frames`
 
 ## 环境
 
@@ -34,7 +34,7 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：85 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：95 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
@@ -105,3 +105,24 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
   `outputs/shou-zhu-dai-tu/seedance_dry_run/jobs.json` 和 `outputs/shou-zhu-dai-tu/videos/*.seedance_dry_run.json`。
 - `review/review_packet.json` 已刷新，视频审核项包含 Seedance jobs 清单和每个镜头 request preview；
   dry-run artifact paths 已去重，便于人工审核。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe build-video-motion-review outputs\shou-zhu-dai-tu --auto`：
+  已生成 10 条视频运动审核项，`review/video_motion_review.json` 中 `approved=10`、`pending=0`。
+- 刷新 `review/review_packet.json` 后，视频审核项已包含 `review/video_motion_review.json`。
+- `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：
+  通过，`video_motion_review_schema=passed`、`video_motion_review_files=passed`。
+
+## 2026-05-03 Phase 2.2 视频运动审核
+
+- 当前分支：`codex/phase-2.2-video-motion-review`。
+- 新增 `build-video-motion-review outputs\shou-zhu-dai-tu --auto`，用于从
+  `seedance_dry_run/jobs.json` 生成 `review/video_motion_review.json`。
+- 运动审核文件逐镜记录首帧图片、Seedance request preview、运动提示词、时长、
+  背景连续性检查和审核状态。
+- 默认不带 `--auto` 时，运动审核项保持 `pending`，便于人工逐镜编辑；带 `--auto`
+  只表示离线技术检查通过，不代表真实视频已经生成或通过人工审片。
+- `quality-check` 在该文件存在时会校验 schema、状态、首帧路径、request preview 路径、
+  背景连续性提示和与 Seedance dry-run jobs 的一致性。
+- 已根据独立审核反馈补充反向一致性检查：旧 scene 或重复 scene 混入 `video_motion_review.json`
+  时，`quality-check` 会失败并写入 `full_quality.json`。
+- `build-review-packet` 会把 `review/video_motion_review.json` 纳入每个视频审核项，
+  让统一审核包能够追踪运动提示词审核结果。

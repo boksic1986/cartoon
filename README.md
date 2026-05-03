@@ -64,6 +64,7 @@ quality_reports/full_quality.json
 review/script_review.json
 review/image_review.json
 review/video_review.json
+review/video_motion_review.json
 review/review_packet.json
 subtitles/final.srt
 final/metadata.json
@@ -85,6 +86,7 @@ idiom-video approve-images outputs/shou-zhu-dai-tu/images_raw --auto
 idiom-video register-preview-images outputs/shou-zhu-dai-tu/real_images_preview_comedy_10 --approved
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider seedance --dry-run
+idiom-video build-video-motion-review outputs/shou-zhu-dai-tu --auto
 idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-audio outputs/shou-zhu-dai-tu/06_voice_jobs.json --provider mock
 idiom-video build-lipsync-jobs outputs/shou-zhu-dai-tu/07_alignment.json
@@ -111,6 +113,10 @@ workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表
 “没有请求”当成“已经准备好”。
 如果存在 `seedance_dry_run/jobs.json`，`quality-check` 会校验 Seedance dry-run 任务结构、
 首帧图片路径和每个 request preview 文件是否存在；空的 jobs 列表同样会失败。
+如果存在 `review/video_motion_review.json`，`quality-check` 会校验每个镜头的运动审核项、
+首帧图片路径、Seedance request preview 路径、背景连续性提示和审核状态。未带 `--auto`
+生成的运动审核项会保持 `pending`，用于人工逐镜确认；进入完整质量门前需要人工改为
+`approved`，或明确使用 `--auto` 只做离线技术检查通过。
 如果存在 `review/review_packet.json`，`quality-check` 会校验审核包 schema、每个审核项状态和
 引用的产物文件路径。
 如果存在 `quality_reports/real_image_preflight.json`，`quality-check` 会校验真实图片生成前门禁报告；
@@ -152,6 +158,17 @@ idiom-video build-review-packet outputs/shou-zhu-dai-tu/
 ComfyUI 或 Seedance dry-run，审核包会把对应的 jobs 清单和 request preview 一并列入审核项。
 dry-run 产物生成或变更后，需要重新运行 `build-review-packet`；否则 `quality-check` 和
 `real-image-preflight` 会认为审核包已经过期。
+
+Seedance dry-run 之后，可以先生成视频运动审核表：
+
+```powershell
+idiom-video build-video-motion-review outputs/shou-zhu-dai-tu --auto
+```
+
+该命令会写出 `review/video_motion_review.json`，逐镜列出首帧图片、request preview、
+运动提示词、背景连续性检查和审核状态。默认不带 `--auto` 时会写成 `pending`，
+适合人工逐镜编辑；带 `--auto` 只表示离线技术检查通过，不代表真实视频效果已经通过人工审片。
+如果该文件存在，`build-review-packet` 会把它纳入每个视频审核项。
 
 ## 对话、配音与口型
 
@@ -226,6 +243,16 @@ outputs/shou-zhu-dai-tu/videos/*.seedance_dry_run.json
 
 这些 JSON 只用于人工审核请求内容。后续真实接入时，应把审核通过的首帧图和视频提示词交给
 provider，并记录 task id、状态、重试次数和输出路径，同时避免泄露 API key。
+
+在真实 Seedance provider 前，建议先运行：
+
+```powershell
+idiom-video build-video-motion-review outputs/shou-zhu-dai-tu
+```
+
+人工确认每个镜头的 `motion_prompt`、`image_path`、`request_preview_path` 和
+`continuity_prompt_present` 后，再把状态改为 `approved`，或在只做本地技术闭环时使用
+`--auto` 生成自动通过的审核记录。
 
 ## 项目管理文档
 

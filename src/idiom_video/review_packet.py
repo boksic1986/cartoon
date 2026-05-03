@@ -13,6 +13,7 @@ from idiom_video.schemas import (
     Script,
     Storyboard,
     VideoClip,
+    VideoMotionReview,
     VoiceAsset,
 )
 from idiom_video.utils.json_io import read_json
@@ -106,6 +107,25 @@ def find_review_packet_dry_run_gaps(story_dir: Path, packet: ReviewPacket) -> li
                         job.request_preview_path,
                     )
                 )
+    video_motion_review_path = story_dir / "review" / "video_motion_review.json"
+    if video_motion_review_path.exists():
+        try:
+            review = VideoMotionReview.model_validate(read_json(video_motion_review_path))
+        except Exception:
+            gaps.append(("video motion review schema invalid", video_motion_review_path.as_posix()))
+            return gaps
+        for review_item in review.items:
+            item = _packet_item_by_type_scene(packet, "video", review_item.scene_id)
+            if item is None:
+                gaps.append(("video motion review scene missing from review packet", review_item.scene_id))
+                continue
+            if video_motion_review_path.as_posix() not in item.artifact_paths:
+                gaps.append(
+                    (
+                        "video motion review missing from review packet",
+                        f"review_packet:{item.item_id}",
+                    )
+                )
     return gaps
 
 
@@ -120,6 +140,7 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
     comfyui_dry_run_jobs = _load_list(comfyui_dry_run_jobs_path, ComfyUIDryRunJob.model_validate)
     seedance_dry_run_jobs_path = story_dir / "seedance_dry_run" / "jobs.json"
     seedance_dry_run_jobs = _load_list(seedance_dry_run_jobs_path, SeedanceDryRunJob.model_validate)
+    video_motion_review_path = story_dir / "review" / "video_motion_review.json"
 
     voice_assets_by_cue = {asset.cue_id: asset for asset in voice_assets}
     clips_by_scene = {clip.scene_id: clip for clip in clips}
@@ -171,6 +192,8 @@ def build_review_packet(story_dir: Path) -> ReviewPacket:
             seedance_job = seedance_dry_run_by_scene.get(scene.scene_id)
             if seedance_job is not None:
                 video_paths.append(seedance_job.request_preview_path)
+        if video_motion_review_path.exists():
+            video_paths.append(video_motion_review_path.as_posix())
         video_paths = _unique_paths(video_paths)
         items.append(
             ReviewPacketItem(

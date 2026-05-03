@@ -391,6 +391,51 @@ class ReviewRecord(StrictSchemaModel):
     summary: dict[str, int]
 
 
+class VideoMotionReviewItem(StrictSchemaModel):
+    item_id: str
+    scene_id: str
+    title: str
+    image_path: str
+    request_preview_path: str
+    duration_seconds: float = Field(gt=0, le=10)
+    motion_prompt: str
+    continuity_prompt_present: bool
+    checklist: list[str]
+    status: ReviewStatus = "pending"
+    notes: str = ""
+
+    @field_validator("image_path", "request_preview_path", "motion_prompt")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("checklist")
+    @classmethod
+    def require_checklist(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("checklist must contain at least one item")
+        return value
+
+
+class VideoMotionReview(StrictSchemaModel):
+    idiom_slug: str
+    title: str
+    story_dir: str
+    seedance_dry_run_jobs_path: str
+    auto: bool = False
+    items: list[VideoMotionReviewItem]
+    summary: dict[str, int]
+
+    @field_validator("items")
+    @classmethod
+    def require_items(cls, value: list[VideoMotionReviewItem]) -> list[VideoMotionReviewItem]:
+        if not value:
+            raise ValueError("video motion review must contain items")
+        return value
+
+
 class ReviewPacketItem(StrictSchemaModel):
     item_id: str
     item_type: ReviewPacketItemType
