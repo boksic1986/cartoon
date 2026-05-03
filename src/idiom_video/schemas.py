@@ -263,6 +263,67 @@ class RealVideoPreflightReport(StrictSchemaModel):
     stop_reason: str
 
 
+ReviewVideoProvider = Literal["local_ffmpeg", "pillow_gif_fallback"]
+
+
+class ReviewVideoPlanClip(StrictSchemaModel):
+    clip_id: str
+    scene_id: str
+    order: int = Field(ge=1)
+    title: str
+    image_path: str
+    subtitle_text: str
+    duration_seconds: float = Field(gt=0, le=10)
+    start_seconds: float = Field(ge=0)
+    end_seconds: float = Field(gt=0)
+    motion: str
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> ReviewVideoPlanClip:
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("review video clip end time must be after start time")
+        return self
+
+
+class ReviewVideoPlan(StrictSchemaModel):
+    idiom_slug: str
+    title: str
+    story_dir: str
+    aspect_ratio: str = "9:16"
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    fps: int = Field(gt=0, le=60)
+    clips: list[ReviewVideoPlanClip]
+    output_path: str
+    fallback_path: str
+
+    @field_validator("clips")
+    @classmethod
+    def require_clips(cls, value: list[ReviewVideoPlanClip]) -> list[ReviewVideoPlanClip]:
+        if not value:
+            raise ValueError("review video plan must contain clips")
+        return value
+
+    @property
+    def total_duration_seconds(self) -> float:
+        return sum(clip.duration_seconds for clip in self.clips)
+
+
+class ReviewVideoManifest(StrictSchemaModel):
+    ok: bool
+    provider: ReviewVideoProvider
+    plan_path: str
+    output_path: str
+    fallback_note_path: str | None = None
+    used_ffmpeg: bool
+    clip_count: int = Field(ge=0)
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    fps: int = Field(gt=0, le=60)
+    total_duration_seconds: float = Field(gt=0)
+    message: str
+
+
 class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str

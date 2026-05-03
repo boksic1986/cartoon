@@ -11,6 +11,7 @@ from idiom_video.config import get_settings
 from idiom_video.media.cover_generator import generate_cover
 from idiom_video.media.ffmpeg_compose import compose_mock_final
 from idiom_video.media.metadata_writer import write_publish_metadata
+from idiom_video.media.review_video import build_review_video_plan, compose_review_video as compose_review_video_file
 from idiom_video.media.subtitle import storyboard_to_srt
 from idiom_video.prompt_builder import build_image_jobs, build_image_prompts
 from idiom_video.providers.image_comfyui import ComfyUIImageProvider
@@ -35,6 +36,8 @@ from idiom_video.schemas import (
     ReviewItem,
     ReviewPacket,
     ReviewRecord,
+    ReviewVideoManifest,
+    ReviewVideoPlan,
     Script,
     SeedanceDryRunJob,
     Storyboard,
@@ -526,6 +529,129 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         checks["real_video_preflight"] = "skipped"
         checks["real_video_preflight_consistency"] = "skipped"
 
+    review_video_plan = None
+    review_video_plan_path = story_dir / "09_review_video_plan.json"
+    if review_video_plan_path.exists():
+        review_video_plan = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "review_video_plan_schema",
+            "09_review_video_plan.json",
+            ReviewVideoPlan.model_validate,
+        )
+        review_video_missing = review_video_plan is None
+        if review_video_plan is not None:
+            for clip in review_video_plan.clips:
+                if not Path(clip.image_path).exists():
+                    review_video_missing = True
+                    issues.append(_quality_issue("review video source image missing", clip.image_path))
+        checks["review_video_plan_files"] = "failed" if review_video_missing else "passed"
+    else:
+        checks["review_video_plan_schema"] = "skipped"
+        checks["review_video_plan_files"] = "skipped"
+
+    review_video_manifest_path = story_dir / "final" / "review_v1_manifest.json"
+    if review_video_manifest_path.exists():
+        review_video_manifest = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "review_video_manifest_schema",
+            "final/review_v1_manifest.json",
+            ReviewVideoManifest.model_validate,
+        )
+        review_video_output_missing = review_video_manifest is None
+        if review_video_manifest is not None:
+            if not review_video_manifest.ok:
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video manifest is not ok", "final/review_v1_manifest.json"))
+            if review_video_manifest.provider == "local_ffmpeg" and not review_video_manifest.used_ffmpeg:
+                review_video_output_missing = True
+                issues.append(
+                    _quality_issue(
+                        "review video provider does not match used_ffmpeg",
+                        "final/review_v1_manifest.json",
+                    )
+                )
+            if review_video_manifest.provider == "pillow_gif_fallback" and review_video_manifest.used_ffmpeg:
+                review_video_output_missing = True
+                issues.append(
+                    _quality_issue(
+                        "review video provider does not match used_ffmpeg",
+                        "final/review_v1_manifest.json",
+                    )
+                )
+            if review_video_manifest.provider == "pillow_gif_fallback" and not review_video_manifest.fallback_note_path:
+                review_video_output_missing = True
+                issues.append(
+                    _quality_issue("review video fallback note missing", "final/review_v1_manifest.json")
+                )
+            if not Path(review_video_manifest.output_path).exists():
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video output missing", review_video_manifest.output_path))
+            if review_video_manifest.fallback_note_path and not Path(review_video_manifest.fallback_note_path).exists():
+                review_video_output_missing = True
+                issues.append(
+                    _quality_issue("review video fallback note missing", review_video_manifest.fallback_note_path)
+                )
+            if not Path(review_video_manifest.plan_path).exists():
+                review_video_output_missing = True
+                issues.append(_quality_issue("review video plan missing", review_video_manifest.plan_path))
+            if review_video_plan is not None:
+                if review_video_manifest.plan_path != (story_dir.resolve() / "09_review_video_plan.json").as_posix():
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video manifest plan path differs from current plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+                if review_video_manifest.clip_count != len(review_video_plan.clips):
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video clip count differs from review video plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+                if review_video_manifest.width != review_video_plan.width:
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video width differs from review video plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+                if review_video_manifest.height != review_video_plan.height:
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video height differs from review video plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+                if review_video_manifest.fps != review_video_plan.fps:
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video fps differs from review video plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+                if abs(review_video_manifest.total_duration_seconds - review_video_plan.total_duration_seconds) > 0.001:
+                    review_video_output_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "review video duration differs from review video plan",
+                            "final/review_v1_manifest.json",
+                        )
+                    )
+        checks["review_video_manifest_files"] = "failed" if review_video_output_missing else "passed"
+    else:
+        checks["review_video_manifest_schema"] = "skipped"
+        checks["review_video_manifest_files"] = "skipped"
+
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
     for name in review_files:
@@ -960,6 +1086,47 @@ def compose(story_dir: Path) -> None:
     if not result.used_ffmpeg:
         warn(result.message)
     info(f"wrote {result.output_path}")
+
+
+@app.command(name="build-review-video-plan")
+def build_review_video_plan_command(
+    story_dir: Path,
+    width: int = typer.Option(720, "--width"),
+    height: int = typer.Option(1280, "--height"),
+    fps: int = typer.Option(12, "--fps"),
+) -> None:
+    try:
+        plan = build_review_video_plan(story_dir, width=width, height=height, fps=fps)
+    except FileNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    output = write_json(story_dir / "09_review_video_plan.json", plan)
+    info(f"wrote {output}")
+
+
+@app.command(name="compose-review-video")
+def compose_review_video_command(
+    story_dir: Path,
+    width: int = typer.Option(720, "--width"),
+    height: int = typer.Option(1280, "--height"),
+    fps: int = typer.Option(12, "--fps"),
+    ffmpeg: Path | None = typer.Option(None, "--ffmpeg"),
+    force_fallback: bool = typer.Option(False, "--force-fallback"),
+) -> None:
+    try:
+        manifest = compose_review_video_file(
+            story_dir,
+            width=width,
+            height=height,
+            fps=fps,
+            ffmpeg_path=str(ffmpeg) if ffmpeg else None,
+            force_fallback=force_fallback,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if not manifest.used_ffmpeg:
+        warn(manifest.message)
+    info(f"wrote {manifest.output_path}")
+    info(f"wrote {Path(manifest.plan_path).parent / 'final' / 'review_v1_manifest.json'}")
 
 
 @app.command()
