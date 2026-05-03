@@ -1,5 +1,14 @@
 # 当前状态
-状态：Phase 2.9 Seedance mock HTTP 客户端外壳开发中。
+状态：Phase 2.10 Seedance 真实 transport 与单镜头试跑门禁开发中。
+
+## 2026-05-04 Phase 2.10 Seedance 真实 transport 与单镜头试跑门禁
+
+- 当前分支：`codex/phase-2.10-real-seedance-transport`。
+- 新增真实 Seedance HTTP transport：默认 base URL 为 `https://ark.ap-southeast.bytepluses.com/api/v3`，API key 只从 `ARK_API_KEY`、`SEEDANCE_API_KEY` 或 `BYTEPLUS_ARK_API_KEY` 读取。
+- `submit-seedance-tasks --provider seedance --execute-real --confirm-external-call` 才会进入真实提交路径；默认 `--max-real-tasks 1`，避免一次性提交全部镜头。
+- 图生视频需要 `--image-url-map` 或 `--image-base-url` 提供公网首帧 URL；如果没有公网 URL，默认阻断，除非显式 `--allow-text-only` 做文生视频试跑。
+- `poll-seedance-tasks --provider seedance --execute-real --confirm-external-call` 会轮询真实任务并下载到 `videos/*.seedance_real.mp4`，JSON 产物不会写 provider 凭证或临时远程下载链接。
+- 当前本地 shell 未检测到 `ARK_API_KEY`、`SEEDANCE_API_KEY` 或 `BYTEPLUS_ARK_API_KEY`，所以真实调用会停在凭证门禁。
 
 ## 2026-05-03 Phase 2.9 Seedance mock HTTP 客户端外壳
 

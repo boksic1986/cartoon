@@ -359,4 +359,4 @@ def test_quality_check_fails_when_seedance_mock_http_response_schema_is_invalid(
     assert quality.exit_code != 0
     report = read_json(story_dir / "quality_reports" / "full_quality.json")
     assert report["checks"]["seedance_task_results_files"] == "failed"
-    assert any("Seedance mock HTTP artifact schema validation failed" in issue["message"] for issue in report["issues"])
+    assert any("Seedance client artifact schema validation failed" in issue["message"] for issue in report["issues"])

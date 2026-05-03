@@ -171,6 +171,30 @@ idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu --provider seedance --dr
 和 `*.mock_http.download_response.json`。它只使用本地 `MockSeedanceHttpTransport`，不会读取 API key，
 不会发起网络请求，也不会生成真实视频。`--provider seedance` 不带 `--dry-run` 时仍会拒绝。
 
+进入真实 Seedance API 前，请先阅读 [docs/seedance_real_runbook.md](docs/seedance_real_runbook.md)。
+真实提交必须显式使用 `--execute-real --confirm-external-call`，并且默认只提交 1 个镜头：
+
+```powershell
+idiom-video submit-seedance-tasks outputs/shou-zhu-dai-tu `
+  --provider seedance `
+  --execute-real `
+  --confirm-external-call `
+  --max-real-tasks 1 `
+  --image-url-map outputs/shou-zhu-dai-tu/seedance_submit/image_url_map.json
+```
+
+如果没有公网首帧 URL，命令会在真实请求前停止；只有显式传入 `--allow-text-only` 才会改为文生视频试跑。
+轮询和下载使用：
+
+```powershell
+idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu `
+  --provider seedance `
+  --execute-real `
+  --confirm-external-call
+```
+
+真实路径只从环境变量读取 `ARK_API_KEY` 或 `SEEDANCE_API_KEY`，不会把 provider 凭证、鉴权请求头或临时远程下载链接写入 JSON 产物。
+
 `build-image-prompts` 会写出 `quality_reports/prompt_quality.json`。第一阶段只检查正向
 图片提示词是否包含禁用词；如果需要人工审查，会在生成图片前停止。`negative_prompt`
 可以包含被排除的概念，因为它表达的是“不要生成这些内容”。
@@ -400,6 +424,9 @@ prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-
 `poll-seedance-tasks --provider seedance --dry-run --confirm-external-call` 只演练未来真实 provider 的
 本地 mock HTTP contract，会写出 submit/poll/download request/response JSON 和
 `videos/*.seedance_mock_http.txt` 占位结果，不会读取 API key，也不会访问网络。
+真实单镜头试跑使用 `--provider seedance --execute-real --confirm-external-call --max-real-tasks 1`，
+需要设置 `ARK_API_KEY` 或 `SEEDANCE_API_KEY`，并为图生视频提供公网首帧 URL；没有公网首帧 URL 时，
+只有显式 `--allow-text-only` 才会发起文生视频试跑。
 `quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件重新生成后需要重新运行
 `estimate-video-cost`、`real-video-preflight`、`prepare-seedance-submit`、`submit-seedance-tasks`
 和 `poll-seedance-tasks`。

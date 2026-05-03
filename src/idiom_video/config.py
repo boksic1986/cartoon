@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     output_dir: Path = Field(default=Path("outputs"))
     comfyui_base_url: str = "http://127.0.0.1:8188"
     comfyui_workflow_dir: Path = Path("workflows/comfyui")
+    ark_api_key: str = ""
+    seedance_api_key: str = ""
+    byteplus_ark_api_key: str = ""
+    seedance_base_url: str = "https://ark.ap-southeast.bytepluses.com/api/v3"
+    seedance_model_name: str = "seedance-1-0-pro-250528"
     default_aspect_ratio: str = "9:16"
     default_width: int = 1080
     default_height: int = 1920
