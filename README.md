@@ -157,7 +157,19 @@ idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu --provider mock
 该流程会写出 `seedance_tasks/submissions.json`、`seedance_tasks/results.json`、每个镜头的 mock
 request/response JSON，以及 `videos/*.seedance_mock.txt` 和 `videos/seedance_clips.json`。
 这些文件只用于验证 provider 边界、任务状态 schema、轮询/下载路径和人工审查产物结构，不代表真实
-Seedance 视频已经生成。`--provider seedance` 当前仍会被拒绝，避免误触发真实外部任务。
+Seedance 视频已经生成。
+
+如果需要演练未来真实 Seedance provider 的 HTTP 合同，可以继续使用本地 mock HTTP dry-run：
+
+```powershell
+idiom-video submit-seedance-tasks outputs/shou-zhu-dai-tu --provider seedance --dry-run --confirm-external-call
+idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu --provider seedance --dry-run --confirm-external-call
+```
+
+这会写出 `*.mock_http.submit_request.json`、`*.mock_http.submit_response.json`、
+`*.mock_http.poll_request.json`、`*.mock_http.poll_response.json`、`*.mock_http.download_request.json`
+和 `*.mock_http.download_response.json`。它只使用本地 `MockSeedanceHttpTransport`，不会读取 API key，
+不会发起网络请求，也不会生成真实视频。`--provider seedance` 不带 `--dry-run` 时仍会拒绝。
 
 `build-image-prompts` 会写出 `quality_reports/prompt_quality.json`。第一阶段只检查正向
 图片提示词是否包含禁用词；如果需要人工审查，会在生成图片前停止。`negative_prompt`
@@ -192,8 +204,8 @@ video preflight，防止人工审核后又改动 Seedance dry-run、运动审核
 如果存在 `seedance_submit/submit_plan.json`，`quality-check` 会校验提交计划 schema，并确认它仍匹配
 当前真实视频门禁和费用报告，防止沿用旧提交计划。
 如果存在 `seedance_tasks/submissions.json` 或 `seedance_tasks/results.json`，`quality-check`
-会校验 mock Seedance 任务生命周期 schema、提交计划指纹、mock request/response JSON 和本地
-占位视频输出文件是否存在。
+会校验 mock / mock HTTP Seedance 任务生命周期 schema、提交计划指纹、request/response JSON 和本地
+占位视频输出文件是否存在，并扫描敏感字符串。
 如果存在 `09_review_video_plan.json` 或 `final/review_v1_manifest.json`，`quality-check`
 也会校验本地审片视频计划、首帧图片引用、最终审片产物和 fallback 说明文件是否存在。
 
@@ -372,6 +384,8 @@ idiom-video real-video-preflight outputs/shou-zhu-dai-tu
 idiom-video prepare-seedance-submit outputs/shou-zhu-dai-tu --max-cost 5 --confirm-external-call
 idiom-video submit-seedance-tasks outputs/shou-zhu-dai-tu --provider mock
 idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu --provider mock
+idiom-video submit-seedance-tasks outputs/shou-zhu-dai-tu --provider seedance --dry-run --confirm-external-call
+idiom-video poll-seedance-tasks outputs/shou-zhu-dai-tu --provider seedance --dry-run --confirm-external-call
 ```
 
 前两步会写出 `quality_reports/real_video_preflight.json` 和 `seedance_submit/submit_plan.json`。如果通过，报告中的
@@ -382,6 +396,10 @@ prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-
 `submit-seedance-tasks --provider mock` 和 `poll-seedance-tasks --provider mock` 只会生成
 `seedance_tasks/` 下的 mock 任务账本、逐镜 request/response JSON 和 `videos/*.seedance_mock.txt`
 占位结果，不会调用真实 Seedance。报告、提交计划和 mock task 账本都会记录当前产物指纹；
+`submit-seedance-tasks --provider seedance --dry-run --confirm-external-call` 和
+`poll-seedance-tasks --provider seedance --dry-run --confirm-external-call` 只演练未来真实 provider 的
+本地 mock HTTP contract，会写出 submit/poll/download request/response JSON 和
+`videos/*.seedance_mock_http.txt` 占位结果，不会读取 API key，也不会访问网络。
 `quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件重新生成后需要重新运行
 `estimate-video-cost`、`real-video-preflight`、`prepare-seedance-submit`、`submit-seedance-tasks`
 和 `poll-seedance-tasks`。
