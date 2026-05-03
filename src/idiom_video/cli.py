@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -41,6 +42,7 @@ from idiom_video.schemas import (
     Script,
     SeedanceCostEstimate,
     SeedanceDryRunJob,
+    SeedanceSubmitPlan,
     Storyboard,
     VideoGenerationJob,
     VideoMotionReview,
@@ -49,6 +51,7 @@ from idiom_video.schemas import (
 )
 from idiom_video.script_writer import build_script
 from idiom_video.seedance_cost import estimate_seedance_cost, video_jobs_fingerprint
+from idiom_video.seedance_submit import build_seedance_submit_plan, validate_seedance_submit_plan_current
 from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
 from idiom_video.utils.logging import info, warn
@@ -561,6 +564,30 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         checks["real_video_preflight_schema"] = "skipped"
         checks["real_video_preflight"] = "skipped"
         checks["real_video_preflight_consistency"] = "skipped"
+
+    seedance_submit_plan_path = story_dir / "seedance_submit" / "submit_plan.json"
+    if seedance_submit_plan_path.exists():
+        seedance_submit_plan = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "seedance_submit_plan_schema",
+            "seedance_submit/submit_plan.json",
+            SeedanceSubmitPlan.model_validate,
+        )
+        if seedance_submit_plan is not None:
+            try:
+                submit_plan_issues = validate_seedance_submit_plan_current(story_dir, seedance_submit_plan)
+            except Exception as exc:
+                submit_plan_issues = [f"Seedance submit plan validation failed: {exc}"]
+            checks["seedance_submit_plan_consistency"] = "failed" if submit_plan_issues else "passed"
+            for message in submit_plan_issues:
+                issues.append(_quality_issue(message, "seedance_submit/submit_plan.json"))
+        else:
+            checks["seedance_submit_plan_consistency"] = "skipped"
+    else:
+        checks["seedance_submit_plan_schema"] = "skipped"
+        checks["seedance_submit_plan_consistency"] = "skipped"
 
     review_video_plan = None
     review_video_plan_path = story_dir / "09_review_video_plan.json"
@@ -1131,6 +1158,38 @@ def real_video_preflight(story_dir: Path) -> None:
         raise typer.Exit(1)
     info(f"real video preflight passed: {output}")
     warn(report.stop_reason)
+
+
+@app.command(name="prepare-seedance-submit")
+def prepare_seedance_submit_command(
+    story_dir: Path,
+    max_cost: str = typer.Option(..., "--max-cost"),
+    confirm_external_call: bool = typer.Option(False, "--confirm-external-call"),
+    execute_real: bool = typer.Option(False, "--execute-real"),
+) -> None:
+    try:
+        parsed_max_cost = float(max_cost)
+    except ValueError as exc:
+        raise typer.BadParameter("--max-cost must be a finite positive number") from exc
+    if not math.isfinite(parsed_max_cost) or parsed_max_cost <= 0:
+        raise typer.BadParameter("--max-cost must be a finite positive number")
+    try:
+        plan = build_seedance_submit_plan(
+            story_dir,
+            max_cost=parsed_max_cost,
+            confirm_external_call=confirm_external_call,
+            execute_real=execute_real,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    output = write_json(story_dir / "seedance_submit" / "submit_plan.json", plan)
+    info(
+        "prepared Seedance submit plan: "
+        f"{plan.item_count} clips, max {plan.max_cost} {plan.currency}, "
+        f"estimated {plan.estimated_total_cost} {plan.currency}"
+    )
+    info(f"wrote {output}")
+    warn(plan.stop_reason)
 
 
 @app.command(name="comfyui-smoke-check")

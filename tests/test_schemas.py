@@ -19,6 +19,8 @@ from idiom_video.schemas import (
     ReviewPacketItem,
     SeedanceCostEstimate,
     SeedanceDryRunJob,
+    SeedanceSubmitPlan,
+    SeedanceSubmitPlanItem,
     Storyboard,
     StoryboardScene,
     VideoMotionReview,
@@ -352,3 +354,47 @@ def test_seedance_cost_estimate_schema_is_strict():
     payload["unexpected"] = "reject"
     with pytest.raises(ValidationError):
         SeedanceCostEstimate.model_validate(payload)
+
+
+def test_seedance_submit_plan_schema_is_strict():
+    item = SeedanceSubmitPlanItem(
+        source_job_id="video_scene_01",
+        scene_id="scene_01",
+        image_path="outputs/story/images_approved/scene_01.png",
+        prompt="slow push in",
+        duration_seconds=5,
+        intended_output_path="outputs/story/videos/scene_01.mp4",
+        request_preview_path="outputs/story/videos/scene_01.seedance_dry_run.json",
+        status="ready",
+    )
+    plan = SeedanceSubmitPlan(
+        ok=True,
+        provider="seedance",
+        dry_run=True,
+        execute_real_requested=False,
+        external_call_confirmed=True,
+        story_dir="outputs/story",
+        preflight_report_path="outputs/story/quality_reports/real_video_preflight.json",
+        preflight_artifact_fingerprint="sha256:abc123",
+        cost_estimate_path="outputs/story/quality_reports/seedance_cost_estimate.json",
+        currency="USD",
+        estimated_total_cost=4.3028,
+        max_cost=5,
+        item_count=1,
+        items=[item],
+        next_step="STOP_BEFORE_REAL_SEEDANCE_SUBMIT",
+        stop_reason="Stop before real Seedance submit.",
+        notes=["offline submit plan only"],
+    )
+
+    assert plan.items[0].status == "ready"
+
+    payload = plan.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        SeedanceSubmitPlan.model_validate(payload)
+
+    item_payload = item.model_dump(mode="json")
+    item_payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        SeedanceSubmitPlanItem.model_validate(item_payload)

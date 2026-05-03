@@ -103,6 +103,7 @@ idiom-video generate-audio outputs/shou-zhu-dai-tu/06_voice_jobs.json --provider
 idiom-video build-lipsync-jobs outputs/shou-zhu-dai-tu/07_alignment.json
 idiom-video build-review-packet outputs/shou-zhu-dai-tu/
 idiom-video real-video-preflight outputs/shou-zhu-dai-tu/
+idiom-video prepare-seedance-submit outputs/shou-zhu-dai-tu --max-cost 5 --confirm-external-call
 idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
 idiom-video build-review-video-plan outputs/shou-zhu-dai-tu/
@@ -127,6 +128,20 @@ idiom-video estimate-video-cost outputs/shou-zhu-dai-tu --unit-price-per-million
 
 价格不要写进代码或测试。每次真实提交前，应以当前服务商控制台或官方价格页为准，把最新单价通过
 `--unit-price-per-million-tokens` 传入。
+
+## Seedance 提交计划
+
+真实视频提交前，先生成可人工审核的提交计划：
+
+```powershell
+idiom-video prepare-seedance-submit outputs/shou-zhu-dai-tu --max-cost 5 --confirm-external-call
+```
+
+该命令会读取 `quality_reports/real_video_preflight.json`、`quality_reports/seedance_cost_estimate.json`
+和 `seedance_dry_run/jobs.json`，确认费用没有超过 `--max-cost`，再写出
+`seedance_submit/submit_plan.json`。它仍然不调用 Seedance，不读取真实 API key，不写入凭证、
+请求密钥、账号标识或敏感请求头。`--confirm-external-call` 只表示人工已经理解下一阶段可能调用外部服务；
+当前阶段即使传入 `--execute-real` 也会被拒绝。
 
 `build-image-prompts` 会写出 `quality_reports/prompt_quality.json`。第一阶段只检查正向
 图片提示词是否包含禁用词；如果需要人工审查，会在生成图片前停止。`negative_prompt`
@@ -158,6 +173,8 @@ workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表
 如果存在 `quality_reports/real_video_preflight.json`，`quality-check` 会校验真实视频生成前门禁报告；
 未通过门禁时，完整质量检查也会失败。若该报告曾经通过，`quality-check` 会重新执行离线
 video preflight，防止人工审核后又改动 Seedance dry-run、运动审核或审核包。
+如果存在 `seedance_submit/submit_plan.json`，`quality-check` 会校验提交计划 schema，并确认它仍匹配
+当前真实视频门禁和费用报告，防止沿用旧提交计划。
 如果存在 `09_review_video_plan.json` 或 `final/review_v1_manifest.json`，`quality-check`
 也会校验本地审片视频计划、首帧图片引用、最终审片产物和 fallback 说明文件是否存在。
 
@@ -333,6 +350,7 @@ idiom-video build-video-motion-review outputs/shou-zhu-dai-tu
 ```powershell
 idiom-video estimate-video-cost outputs/shou-zhu-dai-tu --unit-price-per-million-tokens 7 --currency USD
 idiom-video real-video-preflight outputs/shou-zhu-dai-tu
+idiom-video prepare-seedance-submit outputs/shou-zhu-dai-tu --max-cost 5 --confirm-external-call
 ```
 
 该命令会写出 `quality_reports/real_video_preflight.json`。如果通过，报告中的
@@ -340,8 +358,8 @@ idiom-video real-video-preflight outputs/shou-zhu-dai-tu
 此时应停下来由人工确认是否允许接入或调用真实 Seedance 生成视频。
 门禁会校验 `quality_reports/seedance_cost_estimate.json`、`seedance_dry_run/jobs.json` 与当前 `05_video_jobs.json` 的 scene、首帧、
 prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-run 请求。
-报告还会记录当前产物指纹；`quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件
-重新生成后需要重新运行 `estimate-video-cost` 和 `real-video-preflight`。
+报告和提交计划都会记录当前产物指纹；`quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件
+重新生成后需要重新运行 `estimate-video-cost`、`real-video-preflight` 和 `prepare-seedance-submit`。
 
 ## 项目管理文档
 
