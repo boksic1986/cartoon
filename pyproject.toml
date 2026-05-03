@@ -22,6 +22,9 @@ dependencies = [
 dev = [
   "pytest>=8.2",
 ]
+video = [
+  "imageio-ffmpeg>=0.5",
+]
 
 [project.scripts]
 idiom-video = "idiom_video.cli:app"
@@ -32,4 +35,3 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-

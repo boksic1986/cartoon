@@ -33,6 +33,12 @@
   `image_path` 和 `request_preview_path` 存在，`continuity_prompt_present=true`。
 - 等待兔子的镜头应保持人物动作差异，不能简单重复站立或空等；作物、树叶和远山颜色应按时间渐进。
 - `build-video-motion-review --auto` 只表示离线技术检查通过，不代表真实视频效果已经人工审片通过。
+- 如果生成了 `09_review_video_plan.json`，应确认每个镜头的 `image_path` 指向当前认可的
+  `images_approved` 首帧，字幕文本和起止时间与分镜一致。
+- 如果生成了 `final/review_v1_manifest.json`，应确认 `output_path` 指向可打开的本地审片产物；
+  当 `provider=pillow_gif_fallback` 时，还应确认 `fallback_note_path` 存在并说明没有使用 FFmpeg。
+- 本地 `review_v1.mp4` 或 `review_v1.gif` 只用于检查镜头顺序、字幕节奏和首帧连续性，
+  不代表真实 Seedance 运镜、真实配音或口型同步已经完成。
 
 ## 配音与口型审核
 
@@ -63,6 +69,8 @@
   且首帧、request preview、背景连续性提示和 Seedance dry-run 一致。
 - 如存在 `quality_reports/real_video_preflight.json`，其 `ok` 应为 `true`，且
   `next_step` 应为 `STOP_BEFORE_REAL_VIDEO_GENERATION`。
+- 如果存在 `09_review_video_plan.json` 或 `final/review_v1_manifest.json`，`quality-check`
+  应已确认审片计划 schema、首帧引用、最终输出和 fallback 说明文件存在。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。

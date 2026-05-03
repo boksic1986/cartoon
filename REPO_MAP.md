@@ -26,7 +26,7 @@
 - `src/idiom_video/video_motion_review.py`：生成 Seedance dry-run 运动提示词审核 JSON。
 - `src/idiom_video/quality_rules.py`：质量检查和审核规则。
 - `src/idiom_video/providers/`：mock 和 dry-run provider。
-- `src/idiom_video/media/`：字幕、合成、封面和元数据。
+- `src/idiom_video/media/`：字幕、合成、审片视频、封面和元数据。
 - `src/idiom_video/utils/`：路径、JSON、日志、重试工具。
 
 ## 数据与工作流
@@ -46,6 +46,8 @@
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/review_packet.json`：统一人工审核包，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/video_motion_review.json`：视频运动提示词和首帧引用审核表，默认被 git 忽略。
+- `outputs/{idiom_slug}/09_review_video_plan.json`：本地审片视频计划，默认被 git 忽略。
+- `outputs/{idiom_slug}/final/review_v1_manifest.json`：本地审片视频输出清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。

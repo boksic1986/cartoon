@@ -17,6 +17,12 @@ cd D:\pipeline\cartoon\idiom-video-studio
 D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pip install -e ".[dev]"
 ```
 
+如果需要在没有系统 FFmpeg 的机器上直接生成本地审片 MP4，可以额外安装可选视频依赖：
+
+```powershell
+D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pip install -e ".[video]"
+```
+
 推荐在 Windows 上直接使用环境里的 `python.exe` 和 `idiom-video.exe`，这样不依赖
 当前 PowerShell 是否已经激活 conda。需要交互式激活时，可以先初始化 conda，再运行
 `conda activate idiom-video`。
@@ -59,6 +65,7 @@ outputs/shou-zhu-dai-tu/
 audio/voice_assets.json
 07_alignment.json
 08_lipsync_jobs.json
+09_review_video_plan.json
 quality_reports/prompt_quality.json
 quality_reports/full_quality.json
 quality_reports/real_video_preflight.json
@@ -70,6 +77,8 @@ review/review_packet.json
 subtitles/final.srt
 final/metadata.json
 final/final_mock.mp4 或 final/final_mock.txt
+final/review_v1.mp4 或 final/review_v1.gif
+final/review_v1_manifest.json
 ```
 
 ## 单步命令
@@ -95,6 +104,8 @@ idiom-video build-review-packet outputs/shou-zhu-dai-tu/
 idiom-video real-video-preflight outputs/shou-zhu-dai-tu/
 idiom-video generate-subtitles outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video compose outputs/shou-zhu-dai-tu/
+idiom-video build-review-video-plan outputs/shou-zhu-dai-tu/
+idiom-video compose-review-video outputs/shou-zhu-dai-tu/
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
 idiom-video quality-check outputs/shou-zhu-dai-tu/
 ```
@@ -127,6 +138,34 @@ workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表
 如果存在 `quality_reports/real_video_preflight.json`，`quality-check` 会校验真实视频生成前门禁报告；
 未通过门禁时，完整质量检查也会失败。若该报告曾经通过，`quality-check` 会重新执行离线
 video preflight，防止人工审核后又改动 Seedance dry-run、运动审核或审核包。
+如果存在 `09_review_video_plan.json` 或 `final/review_v1_manifest.json`，`quality-check`
+也会校验本地审片视频计划、首帧图片引用、最终审片产物和 fallback 说明文件是否存在。
+
+## 本地审片视频
+
+在真实 Seedance 接入前，可以先把已经人工认可的首帧图拼成一个带字幕的本地审片版本。这个步骤只使用本地图片、Pillow 和可选 FFmpeg，不调用真实视频生成 API，也不需要 API key。
+
+```powershell
+idiom-video build-review-video-plan outputs/shou-zhu-dai-tu/
+idiom-video compose-review-video outputs/shou-zhu-dai-tu/
+```
+
+该流程会写出：
+
+```txt
+outputs/shou-zhu-dai-tu/09_review_video_plan.json
+outputs/shou-zhu-dai-tu/final/review_v1_manifest.json
+outputs/shou-zhu-dai-tu/final/review_v1.mp4
+```
+
+如果系统或可选依赖中没有 FFmpeg，会自动生成：
+
+```txt
+outputs/shou-zhu-dai-tu/final/review_v1.gif
+outputs/shou-zhu-dai-tu/final/review_v1_fallback.txt
+```
+
+这个本地审片版本用于检查剧情节奏、字幕、画面顺序和首帧连续性；它不是 Seedance 的真实运镜结果，也不代表口型同步或真实配音已经完成。
 
 ## 审核记录
 

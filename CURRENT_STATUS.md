@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 2.3 真实视频生成前门禁开发中。
+状态：Phase 2.4 本地第一版审片视频开发中。
 
 ## Git
 
-- 分支：`codex/phase-2.3-real-video-preflight`
+- 分支：`codex/phase-2.4-local-review-video`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`f2fbf7d Merge pull request #11 from boksic1986/codex/phase-2.2-video-motion-review`
+- 已合并功能提交：`bb85807 Merge pull request #12 from boksic1986/codex/phase-2.3-real-video-preflight`
 
 ## 环境
 
@@ -29,8 +29,18 @@
 ```powershell
 D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock
+D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe compose-review-video outputs\shou-zhu-dai-tu
 D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu
 ```
+
+## 2026-05-03 Phase 2.4 本地审片视频
+
+- 当前分支：`codex/phase-2.4-local-review-video`。
+- 新增目标：基于 `images_approved` 中已登记的守株待兔 10 张中国风卡通首帧，生成第一版可本地观看的审片视频。
+- 新增产物：`09_review_video_plan.json`、`final/review_v1_manifest.json`、`final/review_v1.mp4` 或 `final/review_v1.gif`。
+- 新增命令：`build-review-video-plan` 和 `compose-review-video`。
+- `compose-review-video` 优先使用本地 FFmpeg 或可选 `imageio-ffmpeg` 生成 MP4；没有 FFmpeg 时使用 Pillow 写出 GIF fallback 和说明文件。
+- 本阶段不调用真实 Seedance、ComfyUI、OpenAI 或 TTS 服务；本地审片版只用于检查镜头顺序、字幕节奏和首帧连续性。
 
 最近验证：
 
