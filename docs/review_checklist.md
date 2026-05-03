@@ -92,6 +92,7 @@
 - 如存在 ComfyUI dry-run 产物，`comfyui_dry_run/jobs.json` 不应为空，且 jobs 清单和每个镜头的
   request preview 应进入 `review/review_packet.json` 的图片审核项。
 - 如存在 Seedance dry-run 产物，`seedance_dry_run/jobs.json` 不应为空，且 request preview 应进入视频审核项。
+- 真实视频生成前应先运行 `estimate-video-cost`，确认 `quality_reports/seedance_cost_estimate.json` 的单价、来源 URL、复核日期、重试缓冲和总费用。
 - 任何 dry-run 产物生成或变更后，都应重新运行 `build-review-packet`，再进行 `quality-check` 或
   `real-image-preflight`。
 
@@ -101,7 +102,7 @@
 - 如果 `real_video_preflight.json` 的 `ok=true`，则 `next_step` 必须是
   `STOP_BEFORE_REAL_VIDEO_GENERATION`，并且仍需人工确认后才能调用真实 Seedance。
 - 若视频门禁通过后修改了 `seedance_dry_run/jobs.json`、`review/video_motion_review.json`
-  或 `review/review_packet.json`，必须重新运行 `real-video-preflight`；`quality-check`
+  、`review/review_packet.json` 或 `05_video_jobs.json`，必须重新运行 `estimate-video-cost` 和 `real-video-preflight`；`quality-check`
   应能发现这种后续改动并失败。
 - 若视频门禁通过后修改了 `05_video_jobs.json` 的首帧、prompt、时长或输出路径，也必须重新生成
   Seedance dry-run、运动审核、审核包和视频门禁报告。

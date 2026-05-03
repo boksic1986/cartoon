@@ -17,6 +17,7 @@ def _prepare_video_ready_story(tmp_path: Path, monkeypatch) -> Path:
     commands = [
         ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"],
         ["generate-videos", str(story_dir / "05_video_jobs.json"), "--provider", "seedance", "--dry-run"],
+        ["estimate-video-cost", str(story_dir), "--unit-price-per-million-tokens", "7", "--currency", "USD"],
         ["build-video-motion-review", str(story_dir), "--auto"],
         ["build-review-packet", str(story_dir)],
     ]
@@ -38,6 +39,7 @@ def test_real_video_preflight_passes_and_stops_before_generation(tmp_path, monke
     assert report.ok is True
     assert report.next_step == "STOP_BEFORE_REAL_VIDEO_GENERATION"
     assert report.checks["seedance_dry_run"] == "passed"
+    assert report.checks["seedance_cost_estimate"] == "passed"
     assert report.checks["video_motion_review"] == "passed"
     assert report.checks["review_packet"] == "passed"
     assert "generate real videos" in report.stop_reason
@@ -50,6 +52,7 @@ def test_real_video_preflight_fails_without_video_motion_review(tmp_path, monkey
     for command in [
         ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"],
         ["generate-videos", str(story_dir / "05_video_jobs.json"), "--provider", "seedance", "--dry-run"],
+        ["estimate-video-cost", str(story_dir), "--unit-price-per-million-tokens", "7", "--currency", "USD"],
         ["build-review-packet", str(story_dir)],
     ]:
         result = runner.invoke(app, command)
@@ -71,6 +74,7 @@ def test_real_video_preflight_fails_when_review_packet_misses_motion_review(tmp_
     for command in [
         ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"],
         ["generate-videos", str(story_dir / "05_video_jobs.json"), "--provider", "seedance", "--dry-run"],
+        ["estimate-video-cost", str(story_dir), "--unit-price-per-million-tokens", "7", "--currency", "USD"],
         ["build-review-packet", str(story_dir)],
         ["build-video-motion-review", str(story_dir), "--auto"],
     ]:
@@ -83,6 +87,27 @@ def test_real_video_preflight_fails_when_review_packet_misses_motion_review(tmp_
     report = read_json(story_dir / "quality_reports" / "real_video_preflight.json")
     assert report["checks"]["review_packet"] == "failed"
     assert any("video motion review missing from review packet" in issue["message"] for issue in report["issues"])
+
+
+def test_real_video_preflight_fails_without_cost_estimate(tmp_path, monkeypatch):
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "outputs"))
+    story_dir = tmp_path / "outputs" / "shou-zhu-dai-tu"
+    runner = CliRunner()
+    for command in [
+        ["run-all", str(FIXTURES / "idiom_sample.json"), "--providers", "mock"],
+        ["generate-videos", str(story_dir / "05_video_jobs.json"), "--provider", "seedance", "--dry-run"],
+        ["build-video-motion-review", str(story_dir), "--auto"],
+        ["build-review-packet", str(story_dir)],
+    ]:
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, f"{command}: {result.output}"
+
+    result = runner.invoke(app, ["real-video-preflight", str(story_dir)])
+
+    assert result.exit_code != 0
+    report = read_json(story_dir / "quality_reports" / "real_video_preflight.json")
+    assert report["checks"]["seedance_cost_estimate"] == "failed"
+    assert any("Seedance cost estimate missing" in issue["message"] for issue in report["issues"])
 
 
 def test_quality_check_validates_successful_real_video_preflight_when_present(tmp_path, monkeypatch):

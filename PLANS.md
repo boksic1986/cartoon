@@ -1,5 +1,20 @@
 # 项目计划
 
+## 当前阶段：Phase 2.6 真实视频费用门禁
+
+目标：
+
+1. 在真实 Seedance 图生视频前增加离线费用预估，不调用真实服务、不需要 API key。
+2. 新增 `estimate-video-cost`，读取 `05_video_jobs.json`，按时长、分辨率、fps 和人工输入单价估算 token 与费用。
+3. 写出 `quality_reports/seedance_cost_estimate.json`，记录镜头数量、总时长、分辨率、fps、估算 token、单价、重试缓冲、价格来源、来源 URL 和人工复核日期。
+4. `real-video-preflight` 要求费用预估存在且匹配当前视频任务，防止改了镜头数量或时长后沿用旧预算。
+5. `quality-check` 在费用报告存在时校验 schema 和 `05_video_jobs.json` 指纹一致性。
+
+停止线：
+
+1. 本阶段仍不实现真实 Seedance 提交、轮询或下载。
+2. 每次真实提交前必须由人工确认当前官方价格、费用上限和是否允许外部调用。
+
 ## MVP 目标
 
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、

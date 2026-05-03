@@ -357,6 +357,34 @@ class SeedanceDryRunJob(StrictSchemaModel):
     dry_run: bool = True
 
 
+SeedanceBillingMode = Literal["input_without_video", "input_with_video", "custom"]
+CurrencyCode = Literal["USD", "CNY"]
+
+
+class SeedanceCostEstimate(StrictSchemaModel):
+    provider: str = "seedance"
+    model_name: str
+    billing_mode: SeedanceBillingMode
+    currency: CurrencyCode
+    unit_price_per_million_tokens: float = Field(gt=0)
+    retry_multiplier: float = Field(ge=1)
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    fps: int = Field(gt=0, le=60)
+    clip_count: int = Field(gt=0)
+    total_duration_seconds: float = Field(gt=0)
+    estimated_tokens: int = Field(gt=0)
+    base_cost: float = Field(ge=0)
+    estimated_total_cost: float = Field(ge=0)
+    story_dir: str
+    video_jobs_path: str
+    video_jobs_fingerprint: str
+    price_source: str
+    price_source_url: str | None = None
+    price_checked_at: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
 class VoiceJob(StrictSchemaModel):
     job_id: str
     cue_id: str

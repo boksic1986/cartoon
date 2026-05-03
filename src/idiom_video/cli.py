@@ -39,6 +39,7 @@ from idiom_video.schemas import (
     ReviewVideoManifest,
     ReviewVideoPlan,
     Script,
+    SeedanceCostEstimate,
     SeedanceDryRunJob,
     Storyboard,
     VideoGenerationJob,
@@ -47,6 +48,7 @@ from idiom_video.schemas import (
     VoiceJob,
 )
 from idiom_video.script_writer import build_script
+from idiom_video.seedance_cost import estimate_seedance_cost, video_jobs_fingerprint
 from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
 from idiom_video.utils.logging import info, warn
@@ -260,6 +262,37 @@ def _run_full_quality_check(story_dir: Path) -> dict:
     else:
         seedance_dry_run_jobs = None
         checks["seedance_dry_run_schema"] = "skipped"
+    seedance_cost_path = story_dir / "quality_reports" / "seedance_cost_estimate.json"
+    if seedance_cost_path.exists():
+        seedance_cost_estimate = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "seedance_cost_estimate_schema",
+            "quality_reports/seedance_cost_estimate.json",
+            SeedanceCostEstimate.model_validate,
+        )
+        if seedance_cost_estimate is not None:
+            current_video_jobs_path = story_dir / "05_video_jobs.json"
+            if current_video_jobs_path.exists():
+                current_fingerprint = video_jobs_fingerprint(current_video_jobs_path)
+            else:
+                current_fingerprint = ""
+            if seedance_cost_estimate.video_jobs_fingerprint == current_fingerprint:
+                checks["seedance_cost_estimate_consistency"] = "passed"
+            else:
+                checks["seedance_cost_estimate_consistency"] = "failed"
+                issues.append(
+                    _quality_issue(
+                        "Seedance cost estimate is stale; rerun estimate-video-cost",
+                        "quality_reports/seedance_cost_estimate.json",
+                    )
+                )
+        else:
+            checks["seedance_cost_estimate_consistency"] = "skipped"
+    else:
+        checks["seedance_cost_estimate_schema"] = "skipped"
+        checks["seedance_cost_estimate_consistency"] = "skipped"
     _validate_json_artifact(
         story_dir,
         checks,
@@ -1044,6 +1077,49 @@ def real_image_preflight(
         raise typer.Exit(1)
     info(f"real image preflight passed: {output}")
     warn(report.stop_reason)
+
+
+@app.command(name="estimate-video-cost")
+def estimate_video_cost_command(
+    story_dir: Path,
+    model_name: str = typer.Option("Dreamina-Seedance-2.0", "--model-name"),
+    width: int = typer.Option(864, "--width"),
+    height: int = typer.Option(496, "--height"),
+    fps: int = typer.Option(24, "--fps"),
+    currency: str = typer.Option("USD", "--currency"),
+    unit_price_per_million_tokens: float = typer.Option(..., "--unit-price-per-million-tokens"),
+    retry_multiplier: float = typer.Option(1.2, "--retry-multiplier"),
+    billing_mode: str = typer.Option("input_without_video", "--billing-mode"),
+    price_source: str = typer.Option("manual", "--price-source"),
+    price_source_url: str | None = typer.Option(None, "--price-source-url"),
+    price_checked_at: str | None = typer.Option(None, "--price-checked-at"),
+) -> None:
+    if currency not in {"USD", "CNY"}:
+        raise typer.BadParameter("--currency must be USD or CNY")
+    if billing_mode not in {"input_without_video", "input_with_video", "custom"}:
+        raise typer.BadParameter("--billing-mode must be input_without_video, input_with_video, or custom")
+    estimate = estimate_seedance_cost(
+        story_dir,
+        model_name=model_name,
+        width=width,
+        height=height,
+        fps=fps,
+        currency=currency,  # type: ignore[arg-type]
+        unit_price_per_million_tokens=unit_price_per_million_tokens,
+        retry_multiplier=retry_multiplier,
+        billing_mode=billing_mode,  # type: ignore[arg-type]
+        price_source=price_source,
+        price_source_url=price_source_url,
+        price_checked_at=price_checked_at,
+    )
+    output = write_json(story_dir / "quality_reports" / "seedance_cost_estimate.json", estimate)
+    info(
+        "estimated Seedance video cost: "
+        f"{estimate.estimated_total_cost} {estimate.currency} "
+        f"({estimate.clip_count} clips, {estimate.total_duration_seconds}s, retry x{estimate.retry_multiplier})"
+    )
+    info(f"wrote {output}")
+    warn("offline estimate only; confirm current provider pricing before any real Seedance call")
 
 
 @app.command(name="real-video-preflight")

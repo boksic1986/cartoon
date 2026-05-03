@@ -97,6 +97,7 @@ idiom-video register-preview-images outputs/shou-zhu-dai-tu/real_images_preview_
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider mock
 idiom-video generate-videos outputs/shou-zhu-dai-tu/05_video_jobs.json --provider seedance --dry-run
 idiom-video build-video-motion-review outputs/shou-zhu-dai-tu --auto
+idiom-video estimate-video-cost outputs/shou-zhu-dai-tu --unit-price-per-million-tokens 7 --currency USD
 idiom-video build-voice-jobs outputs/shou-zhu-dai-tu/02_storyboard.json
 idiom-video generate-audio outputs/shou-zhu-dai-tu/06_voice_jobs.json --provider mock
 idiom-video build-lipsync-jobs outputs/shou-zhu-dai-tu/07_alignment.json
@@ -110,6 +111,22 @@ idiom-video compose-review-video outputs/shou-zhu-dai-tu/ --with-mock-audio
 idiom-video publish-metadata outputs/shou-zhu-dai-tu/
 idiom-video quality-check outputs/shou-zhu-dai-tu/
 ```
+
+## Seedance 费用预估
+
+在真实图生视频前，先运行离线费用预估：
+
+```powershell
+idiom-video estimate-video-cost outputs/shou-zhu-dai-tu --unit-price-per-million-tokens 7 --currency USD --retry-multiplier 1.2 --price-source "BytePlus ModelArk pricing" --price-source-url "https://docs.byteplus.com/docs/ModelArk/1099320" --price-checked-at "2026-05-03"
+```
+
+该命令只读取 `05_video_jobs.json`，不会调用 Seedance，也不需要 API key。它会写出
+`quality_reports/seedance_cost_estimate.json`，记录镜头数量、总时长、分辨率、fps、估算 token 数、
+单价、重试缓冲、价格来源 URL、复核日期和总费用。`real-video-preflight` 会要求该报告存在且与当前
+`05_video_jobs.json` 一致；如果改了视频任务，必须重新运行 `estimate-video-cost`。
+
+价格不要写进代码或测试。每次真实提交前，应以当前服务商控制台或官方价格页为准，把最新单价通过
+`--unit-price-per-million-tokens` 传入。
 
 `build-image-prompts` 会写出 `quality_reports/prompt_quality.json`。第一阶段只检查正向
 图片提示词是否包含禁用词；如果需要人工审查，会在生成图片前停止。`negative_prompt`
@@ -127,6 +144,8 @@ workflow 路径和每个 request preview 文件是否存在；空的 jobs 列表
 “没有请求”当成“已经准备好”。
 如果存在 `seedance_dry_run/jobs.json`，`quality-check` 会校验 Seedance dry-run 任务结构、
 首帧图片路径和每个 request preview 文件是否存在；空的 jobs 列表同样会失败。
+如果存在 `quality_reports/seedance_cost_estimate.json`，`quality-check` 会校验费用预估 schema，
+并确认它仍匹配当前 `05_video_jobs.json`，避免改了时长或镜头数量后沿用旧预算。
 如果存在 `review/video_motion_review.json`，`quality-check` 会校验每个镜头的运动审核项、
 首帧图片路径、Seedance request preview 路径、背景连续性提示和审核状态。未带 `--auto`
 生成的运动审核项会保持 `pending`，用于人工逐镜确认；进入完整质量门前需要人工改为
@@ -309,19 +328,20 @@ idiom-video build-video-motion-review outputs/shou-zhu-dai-tu
 `continuity_prompt_present` 后，再把状态改为 `approved`，或在只做本地技术闭环时使用
 `--auto` 生成自动通过的审核记录。
 
-当 Seedance dry-run、运动审核和统一审核包都准备好后，再运行真实视频生成前门禁：
+当 Seedance dry-run、运动审核、统一审核包和费用预估都准备好后，再运行真实视频生成前门禁：
 
 ```powershell
+idiom-video estimate-video-cost outputs/shou-zhu-dai-tu --unit-price-per-million-tokens 7 --currency USD
 idiom-video real-video-preflight outputs/shou-zhu-dai-tu
 ```
 
 该命令会写出 `quality_reports/real_video_preflight.json`。如果通过，报告中的
 `next_step` 会是 `STOP_BEFORE_REAL_VIDEO_GENERATION`，表示已经到达真实视频生成前的停止线；
 此时应停下来由人工确认是否允许接入或调用真实 Seedance 生成视频。
-门禁会校验 `seedance_dry_run/jobs.json` 与当前 `05_video_jobs.json` 的 scene、首帧、
+门禁会校验 `quality_reports/seedance_cost_estimate.json`、`seedance_dry_run/jobs.json` 与当前 `05_video_jobs.json` 的 scene、首帧、
 prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-run 请求。
 报告还会记录当前产物指纹；`quality-check` 会用该指纹识别旧报告，相关 JSON 或引用文件
-重新生成后需要重新运行 `real-video-preflight`。
+重新生成后需要重新运行 `estimate-video-cost` 和 `real-video-preflight`。
 
 ## 项目管理文档
 

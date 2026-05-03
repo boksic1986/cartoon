@@ -17,6 +17,7 @@ from idiom_video.schemas import (
     RealVideoPreflightReport,
     ReviewPacket,
     ReviewPacketItem,
+    SeedanceCostEstimate,
     SeedanceDryRunJob,
     Storyboard,
     StoryboardScene,
@@ -318,3 +319,36 @@ def test_real_video_preflight_report_schema_is_strict():
 
     with pytest.raises(ValidationError):
         RealVideoPreflightIssue.model_validate({"message": "x", "unexpected": "reject"})
+
+
+def test_seedance_cost_estimate_schema_is_strict():
+    estimate = SeedanceCostEstimate(
+        provider="seedance",
+        model_name="Dreamina-Seedance-2.0",
+        billing_mode="input_without_video",
+        currency="USD",
+        unit_price_per_million_tokens=7,
+        retry_multiplier=1.2,
+        width=864,
+        height=496,
+        fps=24,
+        clip_count=10,
+        total_duration_seconds=51,
+        estimated_tokens=512244,
+        base_cost=3.586,
+        estimated_total_cost=4.3032,
+        story_dir="outputs/story",
+        video_jobs_path="outputs/story/05_video_jobs.json",
+        video_jobs_fingerprint="sha256:abc123",
+        price_source="manual price",
+        price_source_url="https://docs.byteplus.com/docs/ModelArk/1099320",
+        price_checked_at="2026-05-03",
+        notes=["offline estimate only"],
+    )
+
+    assert estimate.provider == "seedance"
+
+    payload = estimate.model_dump(mode="json")
+    payload["unexpected"] = "reject"
+    with pytest.raises(ValidationError):
+        SeedanceCostEstimate.model_validate(payload)

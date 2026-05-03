@@ -1,4 +1,14 @@
 # 当前状态
+状态：Phase 2.6 真实视频费用门禁开发中。
+
+## 2026-05-03 Phase 2.6 真实视频费用门禁
+
+- 当前分支：`codex/phase-2.6-video-cost-gate`。
+- 新增 `estimate-video-cost outputs\shou-zhu-dai-tu --unit-price-per-million-tokens <price> --currency USD`。
+- 该命令只读取本地 `05_video_jobs.json`，不会调用 Seedance，不需要 API key。
+- 新增产物：`quality_reports/seedance_cost_estimate.json`，记录 clip 数、总时长、分辨率、fps、估算 token、单价、重试缓冲、价格来源、来源 URL、人工复核日期和视频任务指纹。
+- `quality-check` 会在费用报告存在时校验 schema，并确认费用报告与当前 `05_video_jobs.json` 一致。
+- `real-video-preflight` 现在要求费用报告存在且未过期；真实视频生成仍停在 `STOP_BEFORE_REAL_VIDEO_GENERATION`，不会自动调用真实 Seedance。
 
 状态：Phase 2.5 审片反馈闭环与本地 mock 音轨开发中。
 
