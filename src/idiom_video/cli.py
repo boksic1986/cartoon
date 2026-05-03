@@ -37,6 +37,7 @@ from idiom_video.schemas import (
     SeedanceDryRunJob,
     Storyboard,
     VideoGenerationJob,
+    VideoMotionReview,
     VoiceAsset,
     VoiceJob,
 )
@@ -45,6 +46,7 @@ from idiom_video.storyboard_writer import build_storyboard
 from idiom_video.utils.json_io import read_json, write_json
 from idiom_video.utils.logging import info, warn
 from idiom_video.utils.paths import output_dir_for_slug, project_root
+from idiom_video.video_motion_review import build_video_motion_review, find_video_motion_review_gaps
 from idiom_video.voice_builder import build_alignment, build_lipsync_jobs, build_voice_jobs
 
 
@@ -376,6 +378,62 @@ def _run_full_quality_check(story_dir: Path) -> dict:
     else:
         checks["review_packet_schema"] = "skipped"
         checks["review_packet_files"] = "skipped"
+
+    video_motion_review_path = story_dir / "review" / "video_motion_review.json"
+    if video_motion_review_path.exists():
+        video_motion_review = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "video_motion_review_schema",
+            "review/video_motion_review.json",
+            VideoMotionReview.model_validate,
+        )
+        video_motion_review_missing = video_motion_review is None
+        if video_motion_review is not None:
+            if not Path(video_motion_review.seedance_dry_run_jobs_path).exists():
+                video_motion_review_missing = True
+                issues.append(
+                    _quality_issue(
+                        "video motion review Seedance jobs file missing",
+                        video_motion_review.seedance_dry_run_jobs_path,
+                    )
+                )
+            for item in video_motion_review.items:
+                if item.status != "approved":
+                    video_motion_review_missing = True
+                    issues.append(
+                        _quality_issue(
+                            f"video motion review item is {item.status}",
+                            f"video_motion_review:{item.item_id}",
+                        )
+                    )
+                if not item.continuity_prompt_present:
+                    video_motion_review_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "video motion review continuity prompt missing",
+                            f"video_motion_review:{item.item_id}",
+                        )
+                    )
+                if not Path(item.image_path).exists():
+                    video_motion_review_missing = True
+                    issues.append(_quality_issue("video motion review image missing", item.image_path))
+                if not Path(item.request_preview_path).exists():
+                    video_motion_review_missing = True
+                    issues.append(
+                        _quality_issue(
+                            "video motion review request preview missing",
+                            item.request_preview_path,
+                        )
+                    )
+            for message, path in find_video_motion_review_gaps(story_dir, video_motion_review):
+                video_motion_review_missing = True
+                issues.append(_quality_issue(message, path))
+        checks["video_motion_review_files"] = "failed" if video_motion_review_missing else "passed"
+    else:
+        checks["video_motion_review_schema"] = "skipped"
+        checks["video_motion_review_files"] = "skipped"
 
     preflight_report_path = story_dir / "quality_reports" / "real_image_preflight.json"
     if preflight_report_path.exists():
@@ -772,6 +830,19 @@ def quality_check(story_dir: Path) -> None:
 def build_review_packet_command(story_dir: Path) -> None:
     packet = build_review_packet(story_dir)
     output = write_json(story_dir / "review" / "review_packet.json", packet)
+    info(f"wrote {output}")
+
+
+@app.command(name="build-video-motion-review")
+def build_video_motion_review_command(
+    story_dir: Path,
+    auto: bool = typer.Option(False, "--auto"),
+) -> None:
+    try:
+        review = build_video_motion_review(story_dir, auto=auto)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    output = write_json(story_dir / "review" / "video_motion_review.json", review)
     info(f"wrote {output}")
 
 

@@ -5,7 +5,7 @@
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、
 mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
-## 当前阶段：Phase 2.1 守株待兔 10 镜头视觉方案
+## 当前阶段：Phase 2.2 Seedance 运动提示词审核
 
 已完成：
 
@@ -23,12 +23,19 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
    当前视频任务首帧输入，并写出 `auto=false` 的图片审核记录。
 8. 基于已登记首帧生成 10 条 Seedance dry-run 请求预览，并刷新人工审核包；审核包会去重
    dry-run artifact paths，避免同一个 request preview 重复出现。
+9. 增加 `build-video-motion-review`，把 Seedance dry-run 的首帧图片、request preview、
+   运动提示词和背景连续性检查整理成 `review/video_motion_review.json`。
+10. `quality-check` 会在该运动审核文件存在时校验 schema、首帧路径、request preview 路径、
+    背景连续性提示和审核状态；默认 pending 可用于人工编辑，`--auto` 只表示离线技术检查通过。
+11. `build-review-packet` 会在存在 `review/video_motion_review.json` 时，把它纳入每个视频审核项，
+    防止人工审核包漏掉运动提示词审核结果。
 
 下一步建议：
 
-1. 准备真实 ComfyUI 工作流和模型 manifest，先完成手动前端冒烟。
-2. 冒烟通过后，再开发真实 ComfyUI provider；测试仍必须使用 mock HTTP 服务。
-3. 人工确认 Seedance dry-run 的运动提示词和首帧引用后，再考虑真实视频 provider。
+1. 对 `review/video_motion_review.json` 做逐镜人工复核，重点看等待段动作差异、季节递进和背景连续性。
+2. 准备真实 ComfyUI 工作流和模型 manifest，先完成手动前端冒烟。
+3. 冒烟通过后，再开发真实 ComfyUI provider；测试仍必须使用 mock HTTP 服务。
+4. 人工确认 Seedance dry-run 的运动提示词和首帧引用后，再考虑真实视频 provider。
 
 ## 延后阶段
 

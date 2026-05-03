@@ -22,6 +22,7 @@
 - `src/idiom_video/real_image_preflight.py`：真实图片生成前门禁报告。
 - `src/idiom_video/voice_builder.py`：分镜 speech cue 生成配音、音频对齐和口型任务。
 - `src/idiom_video/review_packet.py`：生成统一人工审核包。
+- `src/idiom_video/video_motion_review.py`：生成 Seedance dry-run 运动提示词审核 JSON。
 - `src/idiom_video/quality_rules.py`：质量检查和审核规则。
 - `src/idiom_video/providers/`：mock 和 dry-run provider。
 - `src/idiom_video/media/`：字幕、合成、封面和元数据。
@@ -42,6 +43,7 @@
   用于人工审核风格、动作和场景连续性，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/`：生成的人工审核状态 JSON，默认被 git 忽略。
 - `outputs/{idiom_slug}/review/review_packet.json`：统一人工审核包，默认被 git 忽略。
+- `outputs/{idiom_slug}/review/video_motion_review.json`：视频运动提示词和首帧引用审核表，默认被 git 忽略。
 - `outputs/{idiom_slug}/comfyui_dry_run/`：ComfyUI 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/seedance_dry_run/`：Seedance 请求预览清单，默认被 git 忽略。
 - `outputs/{idiom_slug}/audio/`：mock 配音资产和配音资产清单，默认被 git 忽略。

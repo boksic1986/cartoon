@@ -29,6 +29,10 @@
 - 镜头时长与旁白、字幕 cue 基本匹配。
 - Seedance dry-run 只表示请求预览已生成，不代表真实视频已生成或已审核。
 - 使用 Seedance dry-run 时，`seedance_dry_run/jobs.json` 和每个 request preview JSON 都应可人工审查。
+- 如生成了 `review/video_motion_review.json`，应逐镜确认 `motion_prompt` 与首帧内容一致，
+  `image_path` 和 `request_preview_path` 存在，`continuity_prompt_present=true`。
+- 等待兔子的镜头应保持人物动作差异，不能简单重复站立或空等；作物、树叶和远山颜色应按时间渐进。
+- `build-video-motion-review --auto` 只表示离线技术检查通过，不代表真实视频效果已经人工审片通过。
 
 ## 配音与口型审核
 
@@ -55,6 +59,8 @@
 - 如果准备进入真实 ComfyUI 冒烟阶段，`comfyui-smoke-check` 已确认 dry-run workflow 与本次检查的
   workflow 一致。
 - 如存在 Seedance dry-run 产物，`quality-check` 已确认首帧图片路径和 request preview 文件存在。
+- 如存在 `review/video_motion_review.json`，`quality-check` 已确认每个运动审核项为 `approved`，
+  且首帧、request preview、背景连续性提示和 Seedance dry-run 一致。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。
