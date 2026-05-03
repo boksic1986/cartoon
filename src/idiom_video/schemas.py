@@ -245,6 +245,24 @@ class RealImagePreflightReport(StrictSchemaModel):
     stop_reason: str
 
 
+class RealVideoPreflightIssue(StrictSchemaModel):
+    message: str
+    path: str | None = None
+
+
+class RealVideoPreflightReport(StrictSchemaModel):
+    ok: bool
+    story_dir: str
+    seedance_dry_run_jobs_path: str
+    video_motion_review_path: str
+    review_packet_path: str
+    artifact_fingerprint: str
+    checks: dict[str, str]
+    issues: list[RealVideoPreflightIssue] = Field(default_factory=list)
+    next_step: Literal["STOP_BEFORE_REAL_VIDEO_GENERATION", "BLOCKED"]
+    stop_reason: str
+
+
 class VideoGenerationJob(StrictSchemaModel):
     job_id: str
     scene_id: str

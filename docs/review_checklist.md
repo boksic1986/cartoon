@@ -61,6 +61,8 @@
 - 如存在 Seedance dry-run 产物，`quality-check` 已确认首帧图片路径和 request preview 文件存在。
 - 如存在 `review/video_motion_review.json`，`quality-check` 已确认每个运动审核项为 `approved`，
   且首帧、request preview、背景连续性提示和 Seedance dry-run 一致。
+- 如存在 `quality_reports/real_video_preflight.json`，其 `ok` 应为 `true`，且
+  `next_step` 应为 `STOP_BEFORE_REAL_VIDEO_GENERATION`。
 - `review/script_review.json`、`review/image_review.json`、`review/video_review.json`
   已由人工确认或明确保留 mock 自动审核状态。
 - `review/review_packet.json` 已由人工确认，或明确保留 mock 自动审核状态。
@@ -79,3 +81,17 @@
 - 如存在 Seedance dry-run 产物，`seedance_dry_run/jobs.json` 不应为空，且 request preview 应进入视频审核项。
 - 任何 dry-run 产物生成或变更后，都应重新运行 `build-review-packet`，再进行 `quality-check` 或
   `real-image-preflight`。
+
+## Phase 2.3 真实视频前门禁补充
+
+- `quality_reports/real_video_preflight.json` 只表示离线门禁结果，不代表真实视频已生成。
+- 如果 `real_video_preflight.json` 的 `ok=true`，则 `next_step` 必须是
+  `STOP_BEFORE_REAL_VIDEO_GENERATION`，并且仍需人工确认后才能调用真实 Seedance。
+- 若视频门禁通过后修改了 `seedance_dry_run/jobs.json`、`review/video_motion_review.json`
+  或 `review/review_packet.json`，必须重新运行 `real-video-preflight`；`quality-check`
+  应能发现这种后续改动并失败。
+- 若视频门禁通过后修改了 `05_video_jobs.json` 的首帧、prompt、时长或输出路径，也必须重新生成
+  Seedance dry-run、运动审核、审核包和视频门禁报告。
+- `05_video_jobs.json` 中的 `scene_id` 和 `job_id` 应保持唯一；重复项应被视为需要重新整理的视频任务。
+- `real_video_preflight.json` 的产物指纹应与当前视频任务、Seedance dry-run、运动审核、
+  审核包及其引用文件一致；`quality-check` 应能发现旧指纹。

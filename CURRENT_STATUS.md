@@ -1,13 +1,13 @@
 # 当前状态
 
-状态：Phase 2.2 Seedance 运动提示词审核开发中。
+状态：Phase 2.3 真实视频生成前门禁开发中。
 
 ## Git
 
-- 分支：`codex/phase-2.2-video-motion-review`
+- 分支：`codex/phase-2.3-real-video-preflight`
 - 远端：`git@github.com:boksic1986/cartoon.git`
 - 已推送 baseline：`f524fe9 chore: initialize mock idiom video pipeline`
-- 已合并功能提交：`8eb5e47 Merge pull request #10 from boksic1986/codex/phase-2-shou-zhu-comedy-10frames`
+- 已合并功能提交：`f2fbf7d Merge pull request #11 from boksic1986/codex/phase-2.2-video-motion-review`
 
 ## 环境
 
@@ -34,7 +34,7 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
 
 最近验证：
 
-- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：95 passed。
+- `D:\ProgramData\miniconda3\envs\idiom-video\python.exe -m pytest`：105 passed。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe run-all data\idioms\shou-zhu-dai-tu.json --providers mock`：生成了预期的 `outputs/shou-zhu-dai-tu/` 产物。
 - `D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check outputs\shou-zhu-dai-tu`：通过。
 - `outputs/shou-zhu-dai-tu/quality_reports/prompt_quality.json`：`ok=true`，无问题。
@@ -126,3 +126,22 @@ D:\ProgramData\miniconda3\envs\idiom-video\Scripts\idiom-video.exe quality-check
   时，`quality-check` 会失败并写入 `full_quality.json`。
 - `build-review-packet` 会把 `review/video_motion_review.json` 纳入每个视频审核项，
   让统一审核包能够追踪运动提示词审核结果。
+
+## 2026-05-03 Phase 2.3 真实视频生成前门禁
+
+- 当前分支：`codex/phase-2.3-real-video-preflight`。
+- 新增 `real-video-preflight outputs\shou-zhu-dai-tu`，用于汇总检查 `05_video_jobs.json`、
+  `seedance_dry_run/jobs.json`、`review/video_motion_review.json` 和 `review/review_packet.json`。
+- 该命令写出 `quality_reports/real_video_preflight.json`；通过时 `next_step` 为
+  `STOP_BEFORE_REAL_VIDEO_GENERATION`，表示必须停在真实 Seedance 调用前等待人工确认。
+- `quality-check` 在该报告存在时会校验 schema、`ok` 状态，并在报告曾经通过时重新运行离线视频门禁，
+  防止后续改动 Seedance dry-run、运动审核或审核包后继续沿用旧报告。
+- 视频门禁会检查 `seedance_dry_run/jobs.json` 与当前 `05_video_jobs.json` 的 scene、source job、
+  首帧、prompt、时长和输出路径一致，避免修改视频任务后沿用旧 dry-run。
+- 已根据独立审核反馈补齐反向覆盖检查：每个当前视频任务都必须有 Seedance dry-run 覆盖。
+- 视频门禁会阻断当前 `05_video_jobs.json` 中重复的 `scene_id` 或 `job_id`，避免同一镜头的新增任务绕过
+  dry-run 和审核覆盖。
+- `real_video_preflight.json` 会记录当前产物指纹；`quality-check` 会比较保存报告与当前产物指纹，
+  防止相关 JSON 和引用文件重新生成后继续沿用旧门禁报告。
+- 当前默认 `outputs/shou-zhu-dai-tu` 已重新生成 10 条 Seedance dry-run、运动审核、审核包和
+  `quality_reports/real_video_preflight.json`，随后 `quality-check outputs\shou-zhu-dai-tu` 通过。

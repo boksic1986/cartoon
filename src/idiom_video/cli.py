@@ -20,6 +20,7 @@ from idiom_video.providers.video_mock import VideoMockProvider
 from idiom_video.providers.video_seedance import SeedanceVideoProvider
 from idiom_video.quality_rules import QualityIssue, QualityResult, check_forbidden_terms, validate_models_manifest
 from idiom_video.real_image_preflight import build_real_image_preflight_report
+from idiom_video.real_video_preflight import build_real_video_preflight_report
 from idiom_video.review_packet import build_review_packet, find_review_packet_dry_run_gaps
 from idiom_video.schemas import (
     AlignmentCue,
@@ -30,6 +31,7 @@ from idiom_video.schemas import (
     LipSyncJob,
     PublishMetadata,
     RealImagePreflightReport,
+    RealVideoPreflightReport,
     ReviewItem,
     ReviewPacket,
     ReviewRecord,
@@ -480,6 +482,50 @@ def _run_full_quality_check(story_dir: Path) -> dict:
         checks["real_image_preflight_smoke_report"] = "skipped"
         checks["real_image_preflight_consistency"] = "skipped"
 
+    real_video_preflight_path = story_dir / "quality_reports" / "real_video_preflight.json"
+    if real_video_preflight_path.exists():
+        video_preflight_report = _validate_json_artifact(
+            story_dir,
+            checks,
+            issues,
+            "real_video_preflight_schema",
+            "quality_reports/real_video_preflight.json",
+            RealVideoPreflightReport.model_validate,
+        )
+        if video_preflight_report is not None:
+            checks["real_video_preflight"] = "passed" if video_preflight_report.ok else "failed"
+            for issue in video_preflight_report.issues:
+                issues.append(QualityIssue(message=issue.message, path=issue.path))
+            if video_preflight_report.ok:
+                current_video_preflight = build_real_video_preflight_report(story_dir)
+                fingerprint_matches = (
+                    current_video_preflight.ok
+                    and video_preflight_report.artifact_fingerprint == current_video_preflight.artifact_fingerprint
+                )
+                checks["real_video_preflight_consistency"] = "passed" if fingerprint_matches else "failed"
+                if current_video_preflight.ok and not fingerprint_matches:
+                    issues.append(
+                        _quality_issue(
+                            "saved real video preflight report is stale; rerun real-video-preflight",
+                            "quality_reports/real_video_preflight.json",
+                        )
+                    )
+                if not current_video_preflight.ok:
+                    issues.append(
+                        _quality_issue(
+                            "current real video preflight no longer passes; rerun real-video-preflight",
+                            "quality_reports/real_video_preflight.json",
+                        )
+                    )
+                    for issue in current_video_preflight.issues:
+                        issues.append(QualityIssue(message=issue.message, path=issue.path))
+            else:
+                checks["real_video_preflight_consistency"] = "skipped"
+    else:
+        checks["real_video_preflight_schema"] = "skipped"
+        checks["real_video_preflight"] = "skipped"
+        checks["real_video_preflight_consistency"] = "skipped"
+
     review_failed = False
     review_files = ["review/script_review.json", "review/image_review.json", "review/video_review.json"]
     for name in review_files:
@@ -862,6 +908,17 @@ def real_image_preflight(
         warn(f"real image preflight failed; see {output}")
         raise typer.Exit(1)
     info(f"real image preflight passed: {output}")
+    warn(report.stop_reason)
+
+
+@app.command(name="real-video-preflight")
+def real_video_preflight(story_dir: Path) -> None:
+    report = build_real_video_preflight_report(story_dir)
+    output = write_json(story_dir / "quality_reports" / "real_video_preflight.json", report)
+    if not report.ok:
+        warn(f"real video preflight failed; see {output}")
+        raise typer.Exit(1)
+    info(f"real video preflight passed: {output}")
     warn(report.stop_reason)
 
 

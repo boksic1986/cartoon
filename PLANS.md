@@ -5,7 +5,7 @@
 构建一条 mock-first 流水线，把单个成语资料 JSON 转换为可审查的中间 JSON、mock 图片、
 mock 视频、字幕、发布元数据和最终 mock 成片文件。
 
-## 当前阶段：Phase 2.2 Seedance 运动提示词审核
+## 当前阶段：Phase 2.3 真实视频生成前门禁
 
 已完成：
 
@@ -29,13 +29,17 @@ mock 视频、字幕、发布元数据和最终 mock 成片文件。
     背景连续性提示和审核状态；默认 pending 可用于人工编辑，`--auto` 只表示离线技术检查通过。
 11. `build-review-packet` 会在存在 `review/video_motion_review.json` 时，把它纳入每个视频审核项，
     防止人工审核包漏掉运动提示词审核结果。
+12. 增加 `real-video-preflight`，汇总检查视频任务、Seedance dry-run、运动审核和统一审核包，
+    写出 `quality_reports/real_video_preflight.json`。
+13. 真实视频门禁通过时只给出 `STOP_BEFORE_REAL_VIDEO_GENERATION`，明确停在真实 Seedance 调用前。
+14. `quality-check` 会在真实视频门禁报告存在时校验 schema、`ok` 状态，并复验当前产物是否仍满足门禁。
 
 下一步建议：
 
-1. 对 `review/video_motion_review.json` 做逐镜人工复核，重点看等待段动作差异、季节递进和背景连续性。
+1. 对 `quality_reports/real_video_preflight.json` 做人工复核；通过后仍需停下确认是否允许真实 Seedance。
 2. 准备真实 ComfyUI 工作流和模型 manifest，先完成手动前端冒烟。
 3. 冒烟通过后，再开发真实 ComfyUI provider；测试仍必须使用 mock HTTP 服务。
-4. 人工确认 Seedance dry-run 的运动提示词和首帧引用后，再考虑真实视频 provider。
+4. 人工确认 Seedance dry-run、运动审核和视频门禁后，再考虑真实视频 provider。
 
 ## 延后阶段
 

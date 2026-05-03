@@ -20,6 +20,7 @@
 - `src/idiom_video/storyboard_writer.py`：剧本生成分镜。
 - `src/idiom_video/prompt_builder.py`：分镜生成图片提示词和图片任务。
 - `src/idiom_video/real_image_preflight.py`：真实图片生成前门禁报告。
+- `src/idiom_video/real_video_preflight.py`：真实视频生成前门禁报告。
 - `src/idiom_video/voice_builder.py`：分镜 speech cue 生成配音、音频对齐和口型任务。
 - `src/idiom_video/review_packet.py`：生成统一人工审核包。
 - `src/idiom_video/video_motion_review.py`：生成 Seedance dry-run 运动提示词审核 JSON。
@@ -38,6 +39,7 @@
 - `docs/comfyui_smoke_checklist.md`：ComfyUI 本地冒烟测试前的离线检查和人工步骤。
 - `outputs/{idiom_slug}/quality_reports/`：生成的质量报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/quality_reports/real_image_preflight.json`：真实图片生成前门禁报告，默认被 git 忽略。
+- `outputs/{idiom_slug}/quality_reports/real_video_preflight.json`：真实视频生成前门禁报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/quality_reports/comfyui_smoke_check.json`：ComfyUI 离线冒烟检查报告，默认被 git 忽略。
 - `outputs/{idiom_slug}/real_images_preview_comedy_10/`：内置图像生成的本地视觉预览和联系表，
   用于人工审核风格、动作和场景连续性，默认被 git 忽略。
